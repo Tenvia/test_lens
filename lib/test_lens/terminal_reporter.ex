@@ -175,8 +175,14 @@ defmodule TestLens.TerminalReporter do
     layer_label = TestLens.Classifier.category_label(TestLens.Classifier.classify(r.test))
     line4 = ["    layer:   ", cyan(layer_label, color), "\n"]
 
-    # Line 5: impact (always "unknown" in v0.1.0)
-    line5 = ["    impact:  ", dim_text("unknown", color), "\n"]
+    # Line 5: impact + area — populated by TestLens.Impact, which loads
+    # the consumer's .test_lens.exs via ProjectConfig.load_or_default/0
+    # and matches the test's file path against the configured areas.
+    impact = TestLens.Impact.classify(r)
+    impact_label = Atom.to_string(impact.impact)
+    area_label = impact.area || "(no area)"
+    line5 = ["    impact:  ", yellow(impact_label, color), "\n"]
+    line5_area = ["    area:    ", dim_text(area_label, color), "\n"]
 
     # Line 6: rerun
     rerun_cmd = rerun_command(r)
@@ -192,7 +198,7 @@ defmodule TestLens.TerminalReporter do
         ""
       end
 
-    [line1, line2, line3, line4, line5, line6, body_section, "\n"]
+    [line1, line2, line3, line4, line5, line5_area, line6, body_section, "\n"]
   end
 
   defp colorize_fail_icon(true), do: [IO.ANSI.red(), "✗", @reset]

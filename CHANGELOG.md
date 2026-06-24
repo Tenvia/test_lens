@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `README.md` reorganised: explicit "What TestLens is" / "What it is not" / "How TestLens differs from" sections, prominent "Why impact config matters" framing, CI integration subsection, contributing pointer.
 - All source code formatted with `mix format`.
+- `TestLens.TerminalReporter.render_failure_block/2` now calls
+  `TestLens.Impact.classify/1` to populate the per-failure `impact:`
+  and `area:` fields instead of the v0.1.0 `unknown` placeholder. JSON
+  and HTML reporters were already wired. The `layer:` field was
+  already wired to `TestLens.Classifier.classify/1`. Three regression
+  tests under a new `render_failures/2 with TestLens.Impact wiring`
+  describe block in `terminal_reporter_test.exs` lock the wiring in
+  (one per scenario: matched area, unmatched area, hardcoded-`unknown`
+  regression).
 
 ## [0.1.0] - 2026-06-24
 
