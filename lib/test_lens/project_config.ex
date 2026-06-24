@@ -1,4 +1,10 @@
 defmodule TestLens.ProjectConfig do
+  # The canonical `.test_lens.exs` example lives in
+  # `TestLens.ProjectConfig.Example.text/0` so the test suite can eval
+  # the same string the docs render. See that module for the rationale.
+
+  alias TestLens.ProjectConfig.Example
+
   @moduledoc """
   Loads and validates a `.test_lens.exs` file from the consumer's project root.
 
@@ -66,27 +72,7 @@ defmodule TestLens.ProjectConfig do
   ## Example `.test_lens.exs`
 
   ```elixir
-  [
-    project: "ExampleApp",
-    areas: [
-      "test/example_app/accounts" => [
-        label: "Accounts",
-        impact: :high,
-        user_facing: true
-      ],
-      "test/example_app_web/live" => [
-        label: "LiveView/UI",
-        impact: :high,
-        user_facing: true
-      ],
-      "test/example_app/workers" => [
-        label: "Background jobs",
-        impact: :medium,
-        user_facing: false
-      ]
-    ],
-    critical_tags: [:payment, :security, :data_integrity]
-  ]
+  #{Example.text()}
   ```
   """
 
