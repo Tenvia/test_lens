@@ -181,6 +181,17 @@ defmodule TestLens.ProjectConfig do
         do: {path, normalize_area(area)}
   end
 
+  # `for {k, v} <- map` iterates a map the same way as a list of
+  # {key, value} tuples, so the body of this clause is identical to
+  # the list clause. The schema doc says `areas` is a "map" — this
+  # clause honours the documented contract.
+  defp normalize_areas(areas) when is_map(areas) do
+    for {path, area} <- areas,
+        is_binary(path) and is_list(area),
+        into: %{},
+        do: {path, normalize_area(area)}
+  end
+
   defp normalize_areas(_), do: %{}
 
   defp normalize_area(area) do
