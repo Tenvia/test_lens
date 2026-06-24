@@ -8,7 +8,8 @@ defmodule TestLens.FailureAdapters.MatchError do
     %{
       type: :match_error,
       likely_layer: "Pattern match / data shape",
-      plain_english: "A pattern match likely failed because the value did not match the expected shape.",
+      plain_english:
+        "A pattern match likely failed because the value did not match the expected shape.",
       common_causes: [
         "an upstream return value changed shape",
         "a missing case branch",

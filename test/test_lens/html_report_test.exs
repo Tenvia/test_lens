@@ -12,28 +12,65 @@ defmodule TestLens.HTMLReportTest do
 
   defp passed_result do
     %Result{
-      test: %ExUnit.Test{name: :"test ok", module: SomeMod, state: nil, time: 100, tags: %{}, logs: []},
-      status: :passed, time_us: 100, failures: [], tags: %{},
-      module: SomeMod, name: :"test ok", file: "test/x_test.exs", line: nil
+      test: %ExUnit.Test{
+        name: :"test ok",
+        module: SomeMod,
+        state: nil,
+        time: 100,
+        tags: %{},
+        logs: []
+      },
+      status: :passed,
+      time_us: 100,
+      failures: [],
+      tags: %{},
+      module: SomeMod,
+      name: :"test ok",
+      file: "test/x_test.exs",
+      line: nil
     }
   end
 
   defp failed_result do
     %Result{
-      test: %ExUnit.Test{name: :"test boom", module: SomeMod, state: {:failed, []}, time: 200, tags: %{}, logs: []},
-      status: :failed, time_us: 200,
+      test: %ExUnit.Test{
+        name: :"test boom",
+        module: SomeMod,
+        state: {:failed, []},
+        time: 200,
+        tags: %{},
+        logs: []
+      },
+      status: :failed,
+      time_us: 200,
       failures: [{:error, %RuntimeError{message: "boom"}, []}],
-      tags: %{}, module: SomeMod, name: :"test boom", file: "test/x_test.exs", line: nil
+      tags: %{},
+      module: SomeMod,
+      name: :"test boom",
+      file: "test/x_test.exs",
+      line: nil
     }
   end
 
   # Exit failures get classified as :critical by the Classifier
   defp critical_failed_result do
     %Result{
-      test: %ExUnit.Test{name: :"test exits", module: CritMod, state: {:failed, []}, time: 200, tags: %{}, logs: []},
-      status: :failed, time_us: 200,
+      test: %ExUnit.Test{
+        name: :"test exits",
+        module: CritMod,
+        state: {:failed, []},
+        time: 200,
+        tags: %{},
+        logs: []
+      },
+      status: :failed,
+      time_us: 200,
       failures: [{:exit, :timeout, []}],
-      tags: %{}, module: CritMod, name: :"test exits", file: "test/crit_test.exs", line: nil
+      tags: %{},
+      module: CritMod,
+      name: :"test exits",
+      file: "test/crit_test.exs",
+      line: nil
     }
   end
 
@@ -53,8 +90,15 @@ defmodule TestLens.HTMLReportTest do
 
   test "build/3 contains all required section anchors" do
     html = HTMLReport.build([failed_result()], %{run: 0, async: nil, load: nil}, nil)
-    for id <- ["summary", "failures-by-area", "failures-by-type",
-               "slow-tests", "suggested-reruns", "raw-failure-details"] do
+
+    for id <- [
+          "summary",
+          "failures-by-area",
+          "failures-by-type",
+          "slow-tests",
+          "suggested-reruns",
+          "raw-failure-details"
+        ] do
       assert html =~ ~s(id="#{id}"), "missing section: #{id}"
     end
   end
@@ -72,7 +116,8 @@ defmodule TestLens.HTMLReportTest do
 
   test "build/3 with a failure renders the raw failure body" do
     html = HTMLReport.build([failed_result()], %{run: 0, async: nil, load: nil}, nil)
-    assert html =~ "boom"  # from the RuntimeError message
+    # from the RuntimeError message
+    assert html =~ "boom"
   end
 
   test "build/3 with failures groups them by type" do
@@ -101,10 +146,13 @@ defmodule TestLens.HTMLReportTest do
     # But external stylesheets, scripts, and web fonts are not.
     refute html =~ ~s(<link rel="stylesheet"),
            "should not include external stylesheets"
+
     refute html =~ ~s(<script),
            "should not include script tags"
+
     refute html =~ ~s(@import),
            "should not include @import for external CSS"
+
     refute html =~ ~s(url(http),
            "should not include url() with http for web fonts/images"
   end
@@ -116,6 +164,7 @@ defmodule TestLens.HTMLReportTest do
 
   test "build/3 uses semantic HTML5 elements" do
     html = HTMLReport.build([failed_result()], %{run: 0, async: nil, load: nil}, nil)
+
     for tag <- ["<header", "<section", "<footer", "<details", "<summary"] do
       assert html =~ tag, "expected semantic tag: #{tag}"
     end
@@ -148,7 +197,15 @@ defmodule TestLens.HTMLReportTest do
 
   test "write/4 the file content is a complete HTML document", %{dir: dir} do
     path = Path.join(dir, "report.html")
-    :ok = HTMLReport.write(path, [passed_result(), failed_result()], %{run: 0, async: nil, load: nil}, 7)
+
+    :ok =
+      HTMLReport.write(
+        path,
+        [passed_result(), failed_result()],
+        %{run: 0, async: nil, load: nil},
+        7
+      )
+
     content = File.read!(path)
     assert String.starts_with?(content, "<!DOCTYPE html>")
     assert String.ends_with?(content, "</html>\n")

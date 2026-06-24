@@ -61,7 +61,9 @@ defmodule TestLens.FailureClassifierTest do
     test "ExUnit.AssertionError with timeout in message does not match Timeout adapter (no timeout in message)" do
       # This assertion error does NOT contain "timeout" in the message,
       # so it should fall through to the Assertion adapter, not Timeout
-      failure = {:error, %ExUnit.AssertionError{message: "expected 1 to equal 1", left: 1, right: 1}, []}
+      failure =
+        {:error, %ExUnit.AssertionError{message: "expected 1 to equal 1", left: 1, right: 1}, []}
+
       c = Classifier.classify_failure(failure)
       assert c.type == :assertion
     end
@@ -83,7 +85,10 @@ defmodule TestLens.FailureClassifierTest do
 
   describe "classify_failure/1 - ecto_constraint" do
     test "Ecto.ConstraintError matches EctoConstraint adapter" do
-      failure = {:error, %Ecto.ConstraintError{type: :unique, constraint: "x", message: "constraint error"}, []}
+      failure =
+        {:error,
+         %Ecto.ConstraintError{type: :unique, constraint: "x", message: "constraint error"}, []}
+
       c = Classifier.classify_failure(failure)
       assert_classification(c, :ecto_constraint, :other)
     end
@@ -99,7 +104,9 @@ defmodule TestLens.FailureClassifierTest do
 
   describe "classify_failure/1 - phoenix_route" do
     test "Phoenix.Router.NoRouteError matches PhoenixRoute adapter" do
-      failure = {:error, %Phoenix.Router.NoRouteError{verb: "GET", path: "/x", message: "no route"}, []}
+      failure =
+        {:error, %Phoenix.Router.NoRouteError{verb: "GET", path: "/x", message: "no route"}, []}
+
       c = Classifier.classify_failure(failure)
       assert_classification(c, :phoenix_route, :other)
     end

@@ -95,16 +95,16 @@ defmodule TestLens.ProjectConfig do
   defstruct [:project, areas: %{}, critical_tags: []]
 
   @type area :: %{
-    label: String.t(),
-    impact: :high | :medium | :low | :none,
-    user_facing: boolean()
-  }
+          label: String.t(),
+          impact: :high | :medium | :low | :none,
+          user_facing: boolean()
+        }
 
   @type t :: %__MODULE__{
-    project: String.t() | nil,
-    areas: %{optional(String.t()) => area()},
-    critical_tags: [atom()]
-  }
+          project: String.t() | nil,
+          areas: %{optional(String.t()) => area()},
+          critical_tags: [atom()]
+        }
 
   @valid_impacts [:high, :medium, :low, :none]
 
@@ -130,6 +130,7 @@ defmodule TestLens.ProjectConfig do
         rescue
           e in [SyntaxError, TokenMissingError] ->
             {:error, "Invalid Elixir syntax in #{path}: #{Exception.message(e)}"}
+
           e ->
             {:error, "Error evaluating #{path}: #{Exception.message(e)}"}
         catch
@@ -204,7 +205,9 @@ defmodule TestLens.ProjectConfig do
     }
   end
 
-  defp normalize_tags(tags) when is_list(tags), do: Enum.filter(tags, &is_atom/1) |> Enum.reject(&is_nil/1)
+  defp normalize_tags(tags) when is_list(tags),
+    do: Enum.filter(tags, &is_atom/1) |> Enum.reject(&is_nil/1)
+
   defp normalize_tags(_), do: []
 
   defp validate_impact(impact) when impact in @valid_impacts, do: impact

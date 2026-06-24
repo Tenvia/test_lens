@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `mix format` configuration (`.formatter.exs`); CI runs `mix format --check-formatted`.
+- `mix credo` configuration (`.credo.exs`); CI runs `mix credo --strict`.
+- GitHub Actions CI workflow (`.github/workflows/ci.yml`) testing Elixir 1.18/1.19 × OTP 27/28.
+- `CONTRIBUTING.md` — how to file bugs, request features, and add new classifier/adapter modules.
+- `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
+- `.github/ISSUE_TEMPLATE/` — bug report, classification request, adapter request, report output feedback.
+- `fixtures/` — sample TTY, JSON, and HTML outputs as living examples of the report shapes.
+- `.tool-versions` — pins Elixir 1.19.5 and OTP 28.0 for asdf.
+
+### Changed
+
+- `README.md` reorganised: explicit "What TestLens is" / "What it is not" / "How TestLens differs from" sections, prominent "Why impact config matters" framing, CI integration subsection, contributing pointer.
+- All source code formatted with `mix format`.
+
 ## [0.1.0] - 2026-06-24
 
 ### Changed

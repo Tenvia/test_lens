@@ -114,7 +114,17 @@ defmodule TestLens.FormatterTest do
   test "handle_cast :suite_started is a no-op (does not modify state)", %{store: s} do
     # Pre-populate the isolated store to verify it is NOT reset.
     EventStore.put_result(
-      %Result{status: :passed, name: :stale, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil},
+      %Result{
+        status: :passed,
+        name: :stale,
+        module: M1,
+        file: nil,
+        line: nil,
+        tags: %{},
+        time_us: 0,
+        failures: [],
+        test: nil
+      },
       s
     )
 
@@ -148,7 +158,14 @@ defmodule TestLens.FormatterTest do
   test "handle_cast :test_finished stores a Result built from the test + current module",
        %{store: s} do
     tm = build_test_module(name: :"MyAppWeb.UserControllerTest", file: "test/foo_test.exs")
-    test = build_test(name: :"test create", module: :"MyAppWeb.UserControllerTest", time: 5_000, tags: %{controller: true})
+
+    test =
+      build_test(
+        name: :"test create",
+        module: :"MyAppWeb.UserControllerTest",
+        time: 5_000,
+        tags: %{controller: true}
+      )
 
     # Run the cast with state pointing at the isolated store so the
     # fixture doesn't leak into the default store.
@@ -222,7 +239,12 @@ defmodule TestLens.FormatterTest do
   end
 
   test "handle_cast :suite_finished in :json format writes the JSON artifact", %{store: s} do
-    path = Path.join(System.tmp_dir!(), "test_lens_artifact_#{System.unique_integer([:positive])}.json")
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "test_lens_artifact_#{System.unique_integer([:positive])}.json"
+      )
+
     on_exit(fn -> File.rm_rf(path) end)
 
     s0 = state(config: %Config{format: :json, json_file: path}, event_store: s)
@@ -238,8 +260,15 @@ defmodule TestLens.FormatterTest do
     assert content =~ "\"0.1.0\""
   end
 
-  test "handle_cast :suite_finished writes the HTML artifact when config.html_file is set", %{store: s} do
-    path = Path.join(System.tmp_dir!(), "test_lens_html_artifact_#{System.unique_integer([:positive])}.html")
+  test "handle_cast :suite_finished writes the HTML artifact when config.html_file is set", %{
+    store: s
+  } do
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "test_lens_html_artifact_#{System.unique_integer([:positive])}.html"
+      )
+
     on_exit(fn -> File.rm_rf(path) end)
 
     s0 = state(config: %Config{format: :tty, html_file: path}, event_store: s)
@@ -293,13 +322,24 @@ defmodule TestLens.FormatterTest do
     # *would* write by re-running the same code paths explicitly here.
     tm = build_test_module(name: :"MyApp.Bar.Test", file: "test/bar_test.exs")
     test1 = build_test(name: :"test passes", module: :"MyApp.Bar.Test", time: 10, state: nil)
-    test2 = build_test(name: :"test fails", module: :"MyApp.Bar.Test", time: 20, state: {:failed, [{:error, %RuntimeError{}, []}]})
+
+    test2 =
+      build_test(
+        name: :"test fails",
+        module: :"MyApp.Bar.Test",
+        time: 20,
+        state: {:failed, [{:error, %RuntimeError{}, []}]}
+      )
 
     # Simulate the formatter's data flow into our isolated store.
     EventStore.put_module_event(%{event: :started, name: tm.name, file: tm.file}, s)
     EventStore.put_result(Result.new(test1, tm), s)
     EventStore.put_result(Result.new(test2, tm), s)
-    EventStore.put_module_event(%{event: :finished, name: tm.name, file: tm.file, state: tm.state}, s)
+
+    EventStore.put_module_event(
+      %{event: :finished, name: tm.name, file: tm.file, state: tm.state},
+      s
+    )
 
     results = EventStore.get_results(s)
     modules = EventStore.get_module_events(s)

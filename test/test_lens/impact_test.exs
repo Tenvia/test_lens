@@ -119,8 +119,9 @@ defmodule TestLens.ImpactTest do
     # Map iteration order for string keys is deterministic but not insertion-order.
     # The first key in iteration order wins.
     first_key = Enum.at(Map.keys(config.areas), 0)
+
     assert Impact.classify("test/accounts/admin/user_test.exs", [], config).area ==
-             (if first_key == "test/accounts/admin", do: "Admin Accounts", else: "All Accounts")
+             if(first_key == "test/accounts/admin", do: "Admin Accounts", else: "All Accounts")
   end
 
   # ---------------------------------------------------------------------------

@@ -48,12 +48,12 @@ defmodule TestLens.Impact do
   defstruct [:area, :impact, :user_facing, :critical, :reason]
 
   @type t :: %__MODULE__{
-    area: String.t() | nil,
-    impact: impact_level(),
-    user_facing: boolean(),
-    critical: boolean(),
-    reason: String.t()
-  }
+          area: String.t() | nil,
+          impact: impact_level(),
+          user_facing: boolean(),
+          critical: boolean(),
+          reason: String.t()
+        }
 
   @doc """
   Classifies a test result (convenience wrapper for classify/3).
@@ -86,24 +86,24 @@ defmodule TestLens.Impact do
   defp do_classify(file, tags, %ProjectConfig{critical_tags: ct} = config) do
     critical = Enum.filter(tags, &(&1 in ct))
 
-    cond do
-      critical != [] ->
-        %__MODULE__{
-          area: nil,
-          impact: :high,
-          user_facing: true,
-          critical: true,
-          reason: "tagged critical: #{Enum.join(Enum.map(critical, &Atom.to_string/1), ", ")}"
-        }
-
-      true ->
-        path_match(file, config)
+    if critical != [] do
+      %__MODULE__{
+        area: nil,
+        impact: :high,
+        user_facing: true,
+        critical: true,
+        reason: "tagged critical: #{Enum.join(Enum.map(critical, &Atom.to_string/1), ", ")}"
+      }
+    else
+      path_match(file, config)
     end
   end
 
   defp path_match(file, %ProjectConfig{areas: areas}) do
     case find_area(file, areas) do
-      nil -> default_impact()
+      nil ->
+        default_impact()
+
       area ->
         %__MODULE__{
           area: area.label,

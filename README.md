@@ -1,35 +1,58 @@
 # TestLens
 
-> Improved test output and tooling for Elixir, Phoenix, and OTP codebases.
+> Improved ExUnit output and tooling for Elixir, Phoenix, and OTP codebases.
 
-TestLens is a thin wrapper around `mix test` that registers an additional
-ExUnit formatter and gives you a slightly nicer terminal experience — a
-clear banner, a consistent summary, optional JSON output, and a hook for
-future impact-analysis features. It does not replace ExUnit.
+## What TestLens is
 
-## Goal
+TestLens is a formatter + reporter for ExUnit. It wraps `mix test` with a
+second formatter that normalises per-test events, enriches them with failure
+classifications and impact assessments, and renders a human-readable summary
+to the terminal. It also emits structured JSON and HTML artifacts for CI and
+agent consumption.
 
-Make `mix test` output easier to scan on large projects without giving up
-ExUnit's runner, configuration, or `--failed` / `--stale` / `--seed` flags.
-TestLens passes through every argument you give it after `--`, so anything
-`mix test` understands still works.
+TestLens is not a new test framework. It does not replace ExUnit, nor does
+it run the tests differently. It sits alongside the existing `ExUnit.CLIFormatter`
+so you keep the familiar dot-progression and the trailing summary line.
 
-## Non-goals
+## What TestLens is not
 
-- Not a new test framework. It does not replace ExUnit.
-- It does not parse raw terminal output. It runs as a real ExUnit formatter.
-- It does not require Phoenix, Ecto, or OTP. It works on any Elixir project.
-- It is not a code coverage tool, a mutation tester, or a flaky-test detector
-  (those are future directions).
-- It is not a fork. The default ExUnit formatter is preserved alongside
-  TestLens so you keep the familiar dot-progression output.
+- **Not a new test framework** — ExUnit runs your tests as normal.
+- **Not a replacement for ExUnit** — TestLens is a formatter, not a runner.
+- **Not a code coverage tool** — use `mix test --cover` for that.
+- **Not a mutation tester** — use [Mutation](https://github.com/mustelideos/mutation) or [Matrex](https://github.com/mimest/Matrex) for that.
+- **Not a Phoenix feature testing library** — no browser automation, no wallaby-style
+  session management, no LiveViewTest replacement.
+- **Not a JUnit XML formatter** — use [junit_formatter](https://hex.pm/packages/junit_formatter) for that.
+- **Not a watch tool** — use [mix_test_watch](https://hex.pm/packages/mix_test_watch) for that.
+- **Not a test runner that forks ExUnit** — TestLens does not spawn separate
+  processes or VMs.
+
+## How TestLens differs from
+
+### Watch tools (`mix test --watch`, `file_system`, `mix_test_watch`)
+
+TestLens only runs the tests — it does not watch the filesystem for changes.
+Pair them: run `mix test.lens -- --stale` from a watch task to get TestLens
+output on every save.
+
+### JUnit XML formatters (`junit_formatter`, `mix junit`)
+
+JUnit XML is for CI dashboards (CircleCI, GitHub Actions test reporting).
+TestLens is for the developer's terminal and the agent reviewing a PR. They are
+complementary; use both — `mix test.lens --json` for the artifact, and configure
+your CI to also emit JUnit XML.
+
+### Phoenix feature testing libraries (`wallaby`, `waller`, `phoenix_test`)
+
+TestLens does not drive a browser or simulate a user session. It improves the
+output of the tests you already have. If you use wallaby, TestLens will
+classify wallaby session errors the same way it classifies any other ExUnit failure.
 
 ## Installation
 
 > **Status:** v0.1.0 alpha. APIs may change.
 
-`test_lens` will be published to Hex in a future release. For v0.1.0, add it
-as a path dependency pointing at this repository:
+For v0.1.0, add as a path dependency:
 
 ```elixir
 # mix.exs
@@ -40,14 +63,15 @@ defp deps do
 end
 ```
 
+Once published to Hex this becomes `{:test_lens, "~> 0.1"}`.
+
 Then fetch and compile:
 
 ```sh
 mix deps.get
 ```
 
-No configuration is required. The `mix test.lens` task is registered
-automatically.
+No configuration is required. The `mix test.lens` task is registered automatically.
 
 ## Usage
 
@@ -79,60 +103,23 @@ Combine TestLens flags with `mix test` flags:
 ```sh
 # JSON output for piping into a dashboard or CI artifact
 mix test.lens --json -- --failed
+
+# Pair with --watch for a tight inner loop (where supported)
+mix test.lens -- --stale
 ```
-
-### TestLens-specific flags
-
-| Flag         | Effect                                               |
-| ------------ | ---------------------------------------------------- |
-| `--json`     | Emit a JSON document to stdout AND write the artifact file |
-| `--json-file PATH` | Override the artifact file path (default: `_build/test_lens/report.json`) |
-| `--html`     | Write the HTML report (default path: `_build/test_lens/report.html`) |
-| `--html-file PATH` | Override the HTML report path |
-| `--no-color` | Disable ANSI color (the only color we emit is a banner) |
-| `--color`    | Force-enable color (default)                          |
-| `--impact`   | Reserved for the v0.2.0 changed-files analysis      |
-| `--rerun`    | Reserved for the v0.2.0 --failed helper              |
-| `-j`         | Alias for `--json`                                    |
-
-Anything before `--` is TestLens; anything after is passed straight to
-`mix test`. Run `mix help test.lens` for the in-app help.
-
-## What the output looks like
-
-TTY (default):
-
-```
-== TestLens ==
-Improved ExUnit output
-
-.....................................
-37 passed, 0 failed, 0 skipped, 37 total in 30ms
-```
-
-JSON (`--json`):
-
-```json
-{"failures":[],"summary":{"excluded":0,"failed":0,"invalid":0,"passed":37,"skipped":0,"times_us":{"async":29711,"run":29711,"load":null},"total":37},"test_lens_version":"0.1.0"}
-```
-
-The `ExUnit.CLIFormatter` continues to run alongside TestLens, so you keep
-the familiar dot-progression, the "Running ExUnit" line, and the trailing
-"37 tests, 0 failures" line.
 
 ## Project config (`.test_lens.exs`)
 
-> **Project config supplies meaning. TestLens supplies structure.**
+> **Why this matters:** Without `.test_lens.exs`, every test is
+> `area: nil, impact: :none`. The config is what makes TestLens output
+> actionable — you decide which paths are user-facing, which tags are
+> critical. TestLens supplies the structure; the project supplies the meaning.
 
-TestLens v0.1.0 introduces `TestLens.ProjectConfig`, a loader for a
-project-level `.test_lens.exs` file that lives in your application's root
-directory. This file is where **you** define the MEANING of your codebase —
-which test paths belong to which areas, which ExUnit tags are critical, and
-what impact levels mean in your project. TestLens provides the STRUCTURE:
-the schema definitions, the loader, the validator, and the classification
-pipeline. The distinction is intentional: TestLens makes no assumptions
-about your directory layout, tag vocabulary, or impact vocabulary; those
-are for your project to define.
+TestLens loads a `.test_lens.exs` file from your project root. This file is
+where **you** define which test paths belong to which areas of the codebase,
+which ExUnit tags are critical, and what impact levels mean. TestLens
+provides the structure: the schema definitions, the loader, the validator,
+and the classification pipeline.
 
 ### Schema
 
@@ -186,8 +173,8 @@ A `.test_lens.exs` file is a plain Elixir keyword list:
 - **File raises on evaluation** → empty config + warning on stderr
 
 `TestLens.ProjectConfig.load/1` returns `{:ok, config}` or `{:error, reason}`.
-`TestLens.ProjectConfig.load_or_default/1` (used internally by `Impact.classify/3`)
-returns the config or an empty struct and logs a warning on failure.
+`TestLens.ProjectConfig.load_or_default/1` returns the config or an empty
+struct and logs a warning on failure.
 
 ### `classify/3` result
 
@@ -233,101 +220,116 @@ For v0.2.0, the `--impact` flag will use `TestLens.Impact.changed_files_since/1`
 and `TestLens.Impact.affected_tests/2` to run only tests likely affected by
 changed files.
 
-## JSON artifact for agents and CI
+## Reports (JSON, HTML)
 
-When you run `mix test.lens --json` (or `mix test.lens --json-file PATH`), TestLens
-writes a structured JSON document to a file. The document is the same data the
-human-facing TTY report shows, but in a form that is easy for AI agents, CI
-scripts, and other tools to consume without having to scrape or parse terminal
-output.
+TestLens emits two structured report formats. Both contain the same normalised
+data: counts, classifications, impact assessments, slow tests, and suggested reruns.
+They differ only in format — choose based on who or what is consuming the output.
 
-**Default location:** `_build/test_lens/report.json` (relative to the project root).
+### JSON artifact
 
-**Example invocation:**
+**Default path:** `_build/test_lens/report.json`
 
 ```sh
-mix test.lens --json-file tmp/test_lens/report.json -- --failed
+mix test.lens --json                    # write artifact + print to stdout
+mix test.lens --json-file PATH          # write artifact to PATH
+mix test.lens --json -- --failed       # rerun failures, write artifact
 ```
 
-**Small JSON example:**
+The JSON schema is stable: field names will not change without a major version
+bump. New fields may be added in minor versions. Consumers should ignore unknown
+fields.
+
+Example failure entry shape:
 
 ```json
 {
-  "test_lens_version": "0.1.0",
-  "project": "ExampleApp",
-  "timestamp": "2026-06-24T10:00:00.000000Z",
-  "seed": 12345,
-  "totals": {
-    "tests": 50,
-    "passed": 45,
-    "failed": 2,
-    "skipped": 3,
-    "excluded": 0,
-    "invalid": 0
+  "module": "MyApp.UserAuthTest",
+  "name": "test login with valid credentials",
+  "file": "test/user_auth_test.exs",
+  "classification": {
+    "type": "function_clause",
+    "plain_english": "A function likely received data in a shape it does not handle.",
+    "suggested_checks": ["..."]
   },
-  "times_us": { "run": 1234, "async": 567, "load": null },
-  "failures": [ ... ],
-  "slow": [ ... ],
-  "classification_counts": { "function_clause": 1, "assertion": 1 },
-  "next_commands": [ ... ]
+  "impact": {
+    "area": "Accounts",
+    "critical": true,
+    "reason": "matches area \"Accounts\""
+  }
 }
 ```
 
-### How an AI agent uses the artifact
+### HTML report
 
-After a failed run, the agent can read `_build/test_lens/report.json`
-instead of scraping terminal output:
+**Default path:** `_build/test_lens/report.html`
+
+For PR/issue/agent-review attachments. Self-contained: no external CSS, no
+JavaScript, no web fonts.
 
 ```sh
-# Find every failure
-jq '.failures[] | {module, name, classification, impact}' \
-   _build/test_lens/report.json
-
-# Get the suggested next command
-jq -r '.next_commands[] | .command' _build/test_lens/report.json
-
-# Count failures by type
-jq '.classification_counts' _build/test_lens/report.json
+mix test.lens --html                    # write to _build/test_lens/report.html
+mix test.lens --html-file PATH        # write to PATH
 ```
 
-The schema is stable: a failure entry always has `module`, `name`,
-`file`, `classification` (with `type`, `plain_english`,
-`suggested_checks`), and `impact` (with `area`, `critical`,
-`reason`). An agent can plan a fix from those fields without
-re-running the suite.
+**Sections (in order):** Summary, Critical failures, Failures by area,
+Failures by type, Slow tests, Suggested reruns, Raw failure details.
+
+### CI integration
+
+In CI, run `mix test.lens --json`. The artifact is at
+`_build/test_lens/report.json` (or `--json-file PATH`). Upload it as a build
+artifact:
+
+```yaml
+# GitHub Actions
+- uses: actions/upload-artifact@v4
+  with:
+    name: test-lens-report
+    path: _build/test_lens/report.json
+
+# CircleCI
+- store_artifacts:
+    path: _build/test_lens/report.json
+```
+
+For humans reviewing a PR, run `mix test.lens --html` and attach
+`_build/test_lens/report.html` to the PR.
 
 ### What is NOT included
 
-- No environment variables, no `System.get_env/1`, no shell dumps.
-- No `Mix.Project.config/0` (which can contain DB credentials, API
-  keys, etc. for the consumer's project).
-- No ExUnit logs (logs may contain sensitive data).
-- No raw application config.
+No environment variables. No `Mix.Project.config/0` (which can contain DB
+credentials, API keys, etc.). No ExUnit logs. No raw application config.
 
-## HTML report
-
-For PR/issue/agent-review attachments. Self-contained, no external assets, no JavaScript.
-
-**Default location:** `_build/test_lens/report.html` (relative to the project root).
-
-**Example invocations:**
+## Disable color
 
 ```sh
-mix test.lens --html                    # writes to _build/test_lens/report.html
-mix test.lens --html-file PATH          # writes to PATH
+mix test.lens --no-color
 ```
 
-**Sections (in order):**
+The JSON and HTML outputs are uncolored by design — they are data formats,
+not display formats.
 
-1. **Summary** — total counts and run time
-2. **Critical failures** — failures with `default_severity: :critical` (exit/throw)
-3. **Failures by area** — grouped by `impact.area`
-4. **Failures by type** — grouped by `classification.type` (same as JSON `classification_counts`)
-5. **Slow tests** — top 5 by duration
-6. **Suggested reruns** — the same next commands as the JSON artifact
-7. **Raw failure details** — `<details>` per failure with classification, impact, and raw body
+## Configuration reference
 
-The HTML report contains the same normalised data as the JSON artifact — same counts, same classifications, same groupings — in a form that humans (and AI agents reviewing PRs) can scan without installing `jq` or parsing JSON.
+| Flag | Effect |
+| --- | --- |
+| `--json` | Emit JSON to stdout AND write the JSON artifact file |
+| `--json-file PATH` | Override the JSON artifact path (default: `_build/test_lens/report.json`) |
+| `--html` | Write the HTML report (default: `_build/test_lens/report.html`) |
+| `--html-file PATH` | Override the HTML report path |
+| `--no-color` | Disable ANSI color (the only color we emit is the banner) |
+| `--color` | Force-enable color (default) |
+| `--impact` | **Reserved for v0.2.0** — changed-files analysis |
+| `--rerun` | **Reserved for v0.2.0** — `--failed` helper |
+| `-j` | Alias for `--json` |
+
+Anything before `--` is TestLens; anything after is passed straight to `mix test`.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Bug reports, feature requests,
+and pull requests are welcome. Please file issues before opening large PRs.
 
 ## Architecture (one paragraph)
 
@@ -338,11 +340,10 @@ with `--formatter TestLens.Formatter` added. `TestLens.Formatter` is a plain
 1.18/1.19). It listens to `handle_cast/2` events, converts each
 `%ExUnit.Test{}` into a `TestLens.Result`, stores it in a `TestLens.EventStore`
 Agent, and at `suite_finished` it renders the output via
-`TestLens.TerminalReporter`. Test classification runs through
-`TestLens.Classifier`, which consults a small registry of adapters under
-`lib/test_lens/adapters/` — Phoenix, LiveView, Ecto, and OTP for v0.1.0.
-The `--json` flag switches the reporter to a hand-rolled JSON encoder (no
-external dep).
+`TestLens.TerminalReporter`. Failure classification runs through
+`TestLens.Classifier`, which consults a small registry of failure adapters
+under `lib/test_lens/failure_adapters/`. The `--json` flag switches the
+reporter to a hand-rolled JSON encoder (no external dep).
 
 ## License
 

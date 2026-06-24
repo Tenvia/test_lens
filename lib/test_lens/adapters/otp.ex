@@ -1,6 +1,20 @@
 defmodule TestLens.Adapters.OTP do
   @moduledoc "OTP behaviour adapter: GenServer, Supervisor, etc."
-  @suffixes ["Worker", "GenServer", "GenServerTest", "Supervisor", "SupervisorTest", "GenStateMachine", "GenStateMachineTest", "GenEvent", "GenEventTest", "GenStage", "GenStageTest", "Application", "ApplicationTest"]
+  @suffixes [
+    "Worker",
+    "GenServer",
+    "GenServerTest",
+    "Supervisor",
+    "SupervisorTest",
+    "GenStateMachine",
+    "GenStateMachineTest",
+    "GenEvent",
+    "GenEventTest",
+    "GenStage",
+    "GenStageTest",
+    "Application",
+    "ApplicationTest"
+  ]
 
   @spec category :: :otp
   def category, do: :otp

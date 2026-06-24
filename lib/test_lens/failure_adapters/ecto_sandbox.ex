@@ -18,7 +18,8 @@ defmodule TestLens.FailureAdapters.EctoSandbox do
     %{
       type: :ecto_sandbox,
       likely_layer: "Test isolation / database",
-      plain_english: "A database operation likely ran outside the SQL sandbox, or the sandbox was not checked out for this process.",
+      plain_english:
+        "A database operation likely ran outside the SQL sandbox, or the sandbox was not checked out for this process.",
       common_causes: [
         "missing Ecto.Adapters.SQL.Sandbox.checkout",
         "async test without sandbox ownership",

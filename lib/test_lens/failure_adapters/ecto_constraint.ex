@@ -19,7 +19,8 @@ defmodule TestLens.FailureAdapters.EctoConstraint do
     %{
       type: :ecto_constraint,
       likely_layer: "Data validation / persistence",
-      plain_english: "An Ecto changeset likely violated a database constraint or expected a different result.",
+      plain_english:
+        "An Ecto changeset likely violated a database constraint or expected a different result.",
       common_causes: [
         "missing changeset validations",
         "stale schema definition",

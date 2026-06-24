@@ -8,7 +8,8 @@ defmodule TestLens.FailureAdapters.UndefinedFunction do
     %{
       type: :undefined_function,
       likely_layer: "Module API / dispatch",
-      plain_english: "A function is likely not exported by the module being called, or the module itself is not loaded.",
+      plain_english:
+        "A function is likely not exported by the module being called, or the module itself is not loaded.",
       common_causes: [
         "renamed or moved function",
         "typo in the module or function name",

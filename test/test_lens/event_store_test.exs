@@ -22,15 +22,58 @@ defmodule TestLens.EventStoreTest do
   # ---------------------------------------------------------------------------
 
   test "put_result/2 then get_results/1 roundtrips a single result", %{server: s} do
-    r = %Result{status: :passed, name: :a, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}
+    r = %Result{
+      status: :passed,
+      name: :a,
+      module: M1,
+      file: nil,
+      line: nil,
+      tags: %{},
+      time_us: 0,
+      failures: [],
+      test: nil
+    }
+
     assert :ok = EventStore.put_result(r, s)
     assert [^r] = EventStore.get_results(s)
   end
 
   test "put_result/2 appends in arrival order", %{server: s} do
-    r1 = %Result{status: :passed, name: :first, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}
-    r2 = %Result{status: :failed, name: :second, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}
-    r3 = %Result{status: :skipped, name: :third, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}
+    r1 = %Result{
+      status: :passed,
+      name: :first,
+      module: M1,
+      file: nil,
+      line: nil,
+      tags: %{},
+      time_us: 0,
+      failures: [],
+      test: nil
+    }
+
+    r2 = %Result{
+      status: :failed,
+      name: :second,
+      module: M1,
+      file: nil,
+      line: nil,
+      tags: %{},
+      time_us: 0,
+      failures: [],
+      test: nil
+    }
+
+    r3 = %Result{
+      status: :skipped,
+      name: :third,
+      module: M1,
+      file: nil,
+      line: nil,
+      tags: %{},
+      time_us: 0,
+      failures: [],
+      test: nil
+    }
 
     EventStore.put_result(r1, s)
     EventStore.put_result(r2, s)
@@ -40,7 +83,18 @@ defmodule TestLens.EventStoreTest do
   end
 
   test "reset/1 clears all stored results", %{server: s} do
-    r = %Result{status: :passed, name: :a, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}
+    r = %Result{
+      status: :passed,
+      name: :a,
+      module: M1,
+      file: nil,
+      line: nil,
+      tags: %{},
+      time_us: 0,
+      failures: [],
+      test: nil
+    }
+
     EventStore.put_result(r, s)
     assert EventStore.count(s) == 1
     EventStore.reset(s)
@@ -53,7 +107,17 @@ defmodule TestLens.EventStoreTest do
 
     for i <- 1..3 do
       EventStore.put_result(
-        %Result{status: :passed, name: :"t#{i}", module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil},
+        %Result{
+          status: :passed,
+          name: :"t#{i}",
+          module: M1,
+          file: nil,
+          line: nil,
+          tags: %{},
+          time_us: 0,
+          failures: [],
+          test: nil
+        },
         s
       )
     end
@@ -62,10 +126,65 @@ defmodule TestLens.EventStoreTest do
   end
 
   test "count_by_status/2 filters by status", %{server: s} do
-    EventStore.put_result(%Result{status: :passed, name: :p1, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}, s)
-    EventStore.put_result(%Result{status: :passed, name: :p2, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}, s)
-    EventStore.put_result(%Result{status: :failed, name: :f1, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}, s)
-    EventStore.put_result(%Result{status: :skipped, name: :s1, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}, s)
+    EventStore.put_result(
+      %Result{
+        status: :passed,
+        name: :p1,
+        module: M1,
+        file: nil,
+        line: nil,
+        tags: %{},
+        time_us: 0,
+        failures: [],
+        test: nil
+      },
+      s
+    )
+
+    EventStore.put_result(
+      %Result{
+        status: :passed,
+        name: :p2,
+        module: M1,
+        file: nil,
+        line: nil,
+        tags: %{},
+        time_us: 0,
+        failures: [],
+        test: nil
+      },
+      s
+    )
+
+    EventStore.put_result(
+      %Result{
+        status: :failed,
+        name: :f1,
+        module: M1,
+        file: nil,
+        line: nil,
+        tags: %{},
+        time_us: 0,
+        failures: [],
+        test: nil
+      },
+      s
+    )
+
+    EventStore.put_result(
+      %Result{
+        status: :skipped,
+        name: :s1,
+        module: M1,
+        file: nil,
+        line: nil,
+        tags: %{},
+        time_us: 0,
+        failures: [],
+        test: nil
+      },
+      s
+    )
 
     assert EventStore.count_by_status(:passed, s) == 2
     assert EventStore.count_by_status(:failed, s) == 1
@@ -75,13 +194,35 @@ defmodule TestLens.EventStoreTest do
   end
 
   test "put/2 is an alias for put_result/2", %{server: s} do
-    r = %Result{status: :passed, name: :a, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}
+    r = %Result{
+      status: :passed,
+      name: :a,
+      module: M1,
+      file: nil,
+      line: nil,
+      tags: %{},
+      time_us: 0,
+      failures: [],
+      test: nil
+    }
+
     EventStore.put(r, s)
     assert EventStore.get_results(s) == [r]
   end
 
   test "get/1 is an alias for get_results/1", %{server: s} do
-    r = %Result{status: :passed, name: :a, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil}
+    r = %Result{
+      status: :passed,
+      name: :a,
+      module: M1,
+      file: nil,
+      line: nil,
+      tags: %{},
+      time_us: 0,
+      failures: [],
+      test: nil
+    }
+
     EventStore.put_result(r, s)
     assert EventStore.get(s) == [r]
   end
@@ -130,8 +271,19 @@ defmodule TestLens.EventStoreTest do
 
   test "reset/1 also clears module events", %{server: s} do
     EventStore.put_module_event(%{event: :started, name: M1, file: "x"}, s)
+
     EventStore.put_result(
-      %Result{status: :passed, name: :a, module: M1, file: nil, line: nil, tags: %{}, time_us: 0, failures: [], test: nil},
+      %Result{
+        status: :passed,
+        name: :a,
+        module: M1,
+        file: nil,
+        line: nil,
+        tags: %{},
+        time_us: 0,
+        failures: [],
+        test: nil
+      },
       s
     )
 

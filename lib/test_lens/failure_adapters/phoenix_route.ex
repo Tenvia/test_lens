@@ -19,7 +19,8 @@ defmodule TestLens.FailureAdapters.PhoenixRoute do
     %{
       type: :phoenix_route,
       likely_layer: "Routing / controller dispatch",
-      plain_english: "A Phoenix route likely did not match, or a controller action could not be invoked.",
+      plain_english:
+        "A Phoenix route likely did not match, or a controller action could not be invoked.",
       common_causes: [
         "router changed and the test path is stale",
         "wrong HTTP verb",

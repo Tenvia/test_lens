@@ -1,0 +1,28 @@
+name: Report output feedback
+description: Tell us if the report output is hard to read, missing fields, or could be more useful.
+labels: ["feedback", "reporter"]
+body:
+  - type: dropdown
+    id: report
+    attributes:
+      label: Which report?
+      options:
+        - "TTY (mix test.lens)"
+        - "JSON (mix test.lens --json)"
+        - "HTML (mix test.lens --html)"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What's wrong or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example (paste the relevant section)
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: How would you change it?

@@ -34,10 +34,11 @@ defmodule Mix.Tasks.Test.LensTest do
   test "--bogus produces invalid_option error" do
     {_, _, invalid} = Task.parse(["--bogus"])
     assert invalid != []
+
     assert Enum.any?(invalid, fn
-      {:bogus, :invalid_option} -> true
-      _ -> false
-    end)
+             {:bogus, :invalid_option} -> true
+             _ -> false
+           end)
   end
 
   test "test/foo_test.exs:42 after -- passes through unchanged" do

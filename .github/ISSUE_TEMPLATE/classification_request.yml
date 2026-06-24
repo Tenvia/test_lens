@@ -1,0 +1,43 @@
+name: Classification request
+description: Suggest a new failure category for TestLens's classifier.
+labels: ["enhancement", "classifier"]
+body:
+  - type: textarea
+    id: example
+    attributes:
+      label: Example failure tuple
+      placeholder: |
+        {:error, %SomeLibrary.SomeError{...}, [stack frames]}
+      render: elixir
+    validations:
+      required: true
+  - type: textarea
+    id: plain_english
+    attributes:
+      label: What does this failure mean, in plain English?
+      description: One or two sentences. Use hedged language ("likely", "possible").
+    validations:
+      required: true
+  - type: textarea
+    id: common_causes
+    attributes:
+      label: What typically causes it?
+      description: 2-5 bullet points.
+    validations:
+      required: true
+  - type: textarea
+    id: suggested_checks
+    attributes:
+      label: What should a developer check first?
+      description: 2-5 bullet points.
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Default severity
+      options:
+        - ":critical (process died, hard failure)"
+        - ":other (assertion, recoverable)"
+    validations:
+      required: true

@@ -20,7 +20,8 @@ defmodule TestLens.FailureAdapters.LiveViewRender do
     %{
       type: :live_view_render,
       likely_layer: "LiveView rendering / event handling",
-      plain_english: "A LiveView likely failed to render, an event likely did not behave as expected, or an assertion in the live page did not hold.",
+      plain_english:
+        "A LiveView likely failed to render, an event likely did not behave as expected, or an assertion in the live page did not hold.",
       common_causes: [
         "template changed and assigns are stale",
         "missing or renamed event handler",

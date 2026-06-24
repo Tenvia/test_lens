@@ -8,7 +8,8 @@ defmodule TestLens.FailureAdapters.ProcessExit do
     %{
       type: :process_exit,
       likely_layer: "Process / OTP",
-      plain_english: "A process likely exited unexpectedly, was killed, or its owner raised while supervising it.",
+      plain_english:
+        "A process likely exited unexpectedly, was killed, or its owner raised while supervising it.",
       common_causes: [
         "crash in GenServer.init/1 or a callback",
         "a linked process died",

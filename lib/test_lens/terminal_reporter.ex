@@ -14,7 +14,8 @@ defmodule TestLens.TerminalReporter do
   defp bright(t), do: [bright(), t, @reset]
   defp dim_text(t), do: [@dim, t, @reset]
 
-  @spec render(TestLens.Config.t(), [TestLens.Result.t()], map(), integer() | :random | nil) :: IO.iodata()
+  @spec render(TestLens.Config.t(), [TestLens.Result.t()], map(), integer() | :random | nil) ::
+          IO.iodata()
   def render(config, results, times_us), do: render(config, results, times_us, nil)
 
   def render(%TestLens.Config{format: :json} = config, results, times_us, seed) do
@@ -41,7 +42,12 @@ defmodule TestLens.TerminalReporter do
     [label, "\n", sub, "\n\n"]
   end
 
-  @spec render_summary(TestLens.Config.t(), [TestLens.Result.t()], map(), integer() | :random | nil) :: IO.iodata()
+  @spec render_summary(
+          TestLens.Config.t(),
+          [TestLens.Result.t()],
+          map(),
+          integer() | :random | nil
+        ) :: IO.iodata()
   def render_summary(%TestLens.Config{} = config, results, times_us, seed \\ nil) do
     passed = Enum.count(results, &TestLens.Result.passed?/1)
     failed = Enum.count(results, &TestLens.Result.failed?/1)
@@ -58,7 +64,16 @@ defmodule TestLens.TerminalReporter do
     time_str = format_run_time(times_us)
     seed_str = format_seed(seed)
 
-    summary = Enum.join([passed_str, failed_str, skipped_str, "#{total} total in #{time_str}#{excluded_str}#{invalid_str}#{seed_str}"], ", ")
+    summary =
+      Enum.join(
+        [
+          passed_str,
+          failed_str,
+          skipped_str,
+          "#{total} total in #{time_str}#{excluded_str}#{invalid_str}#{seed_str}"
+        ],
+        ", "
+      )
 
     [summary, "\n"]
   end
@@ -95,17 +110,19 @@ defmodule TestLens.TerminalReporter do
 
     sections = []
 
-    sections = if critical != [] do
-      [{:critical, critical} | sections]
-    else
-      sections
-    end
+    sections =
+      if critical != [] do
+        [{:critical, critical} | sections]
+      else
+        sections
+      end
 
-    sections = if other != [] do
-      [{:other, other} | sections]
-    else
-      sections
-    end
+    sections =
+      if other != [] do
+        [{:other, other} | sections]
+      else
+        sections
+      end
 
     Enum.map(sections, fn {severity, secs} ->
       header = severity_header(severity, length(secs), config.color)
@@ -125,7 +142,10 @@ defmodule TestLens.TerminalReporter do
   end
 
   defp critical_failure?(%TestLens.Result{status: :invalid}), do: true
-  defp critical_failure?(%TestLens.Result{failures: [{kind, _, _} | _]}) when kind in [:exit, :throw], do: true
+
+  defp critical_failure?(%TestLens.Result{failures: [{kind, _, _} | _]})
+       when kind in [:exit, :throw], do: true
+
   defp critical_failure?(%TestLens.Result{}), do: false
 
   defp render_failure_block(%TestLens.Result{} = r, config) do
@@ -157,11 +177,13 @@ defmodule TestLens.TerminalReporter do
 
     # Blank line + raw failure body
     failure_body = compact_failure(r)
-    body_section = if failure_body != "" do
-      ["\n", failure_body, "\n"]
-    else
-      ""
-    end
+
+    body_section =
+      if failure_body != "" do
+        ["\n", failure_body, "\n"]
+      else
+        ""
+      end
 
     [line1, line2, line3, line4, line5, line6, body_section, "\n"]
   end
@@ -212,12 +234,13 @@ defmodule TestLens.TerminalReporter do
     else
       header = if config.color, do: cyan("── Slowest tests ──"), else: "── Slowest tests ──"
 
-      lines = Enum.map(slow, fn r ->
-        ms = format_ms(r.time_us)
-        module_name = inspect(r.module)
-        test_name = Atom.to_string(r.name)
-        [yellow(ms), "  ", module_name, " > ", test_name, "\n"]
-      end)
+      lines =
+        Enum.map(slow, fn r ->
+          ms = format_ms(r.time_us)
+          module_name = inspect(r.module)
+          test_name = Atom.to_string(r.name)
+          [yellow(ms), "  ", module_name, " > ", test_name, "\n"]
+        end)
 
       ["\n", header, "\n", lines]
     end
@@ -228,7 +251,11 @@ defmodule TestLens.TerminalReporter do
     :io_lib.format("~8.1fms", [ms]) |> IO.iodata_to_binary()
   end
 
-  @spec render_next_commands(TestLens.Config.t(), [TestLens.Result.t()], integer() | :random | nil) :: IO.iodata()
+  @spec render_next_commands(
+          TestLens.Config.t(),
+          [TestLens.Result.t()],
+          integer() | :random | nil
+        ) :: IO.iodata()
   def render_next_commands(%TestLens.Config{} = config, failures, seed) do
     color = config.color
 
@@ -236,9 +263,24 @@ defmodule TestLens.TerminalReporter do
 
     commands =
       []
-      |> prepend_if(true, ["  $ ", bright("mix test.lens -- --stale"), dim_text("  # check for stale tests"), "\n"])
-      |> prepend_if(failures != [], ["  $ ", bright("mix test.lens -- --failed"), dim_text("  # rerun the failing tests"), "\n"])
-      |> prepend_if(is_integer(seed), ["  $ ", bright("mix test.lens -- --seed #{seed}"), dim_text("  # reproduce this run"), "\n"])
+      |> prepend_if(true, [
+        "  $ ",
+        bright("mix test.lens -- --stale"),
+        dim_text("  # check for stale tests"),
+        "\n"
+      ])
+      |> prepend_if(failures != [], [
+        "  $ ",
+        bright("mix test.lens -- --failed"),
+        dim_text("  # rerun the failing tests"),
+        "\n"
+      ])
+      |> prepend_if(is_integer(seed), [
+        "  $ ",
+        bright("mix test.lens -- --seed #{seed}"),
+        dim_text("  # reproduce this run"),
+        "\n"
+      ])
 
     if commands == [] do
       ""
@@ -251,7 +293,8 @@ defmodule TestLens.TerminalReporter do
     if condition, do: [item | list], else: list
   end
 
-  @spec render_json(TestLens.Config.t(), [TestLens.Result.t()], map(), integer() | :random | nil) :: IO.iodata()
+  @spec render_json(TestLens.Config.t(), [TestLens.Result.t()], map(), integer() | :random | nil) ::
+          IO.iodata()
   def render_json(%TestLens.Config{} = _config, results, times_us, seed \\ nil) do
     passed = Enum.count(results, &TestLens.Result.passed?/1)
     failed = Enum.count(results, &TestLens.Result.failed?/1)
@@ -282,11 +325,12 @@ defmodule TestLens.TerminalReporter do
     next_commands =
       build_next_commands_json(seed, failed > 0)
 
-    seed_value = cond do
-      is_integer(seed) -> seed
-      seed == :random -> "random"
-      true -> nil
-    end
+    seed_value =
+      cond do
+        is_integer(seed) -> seed
+        seed == :random -> "random"
+        true -> nil
+      end
 
     json_map = %{
       "test_lens_version" => TestLens.version(),

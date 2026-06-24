@@ -11,7 +11,8 @@ defmodule TestLens.ClassifierTest do
   end
 
   test "tags :integration wins" do
-    assert Classifier.classify(build(:"MyAppWeb.UserControllerTest", %{integration: true})) == :integration
+    assert Classifier.classify(build(:"MyAppWeb.UserControllerTest", %{integration: true})) ==
+             :integration
   end
 
   test "tags :unit wins" do
@@ -40,17 +41,17 @@ defmodule TestLens.ClassifierTest do
 
   test "category_label/1 for known categories" do
     for {atom, str} <- [
-      unit: "unit",
-      integration: "integration",
-      phoenix: "phoenix",
-      live_view: "live_view",
-      ecto: "ecto",
-      otp: "otp",
-      controller: "controller",
-      view: "view",
-      channel: "channel",
-      unknown: "unknown"
-    ] do
+          unit: "unit",
+          integration: "integration",
+          phoenix: "phoenix",
+          live_view: "live_view",
+          ecto: "ecto",
+          otp: "otp",
+          controller: "controller",
+          view: "view",
+          channel: "channel",
+          unknown: "unknown"
+        ] do
       assert Classifier.category_label(atom) == str
     end
   end

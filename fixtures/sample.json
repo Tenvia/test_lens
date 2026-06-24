@@ -1,0 +1,107 @@
+{
+  "test_lens_version": "0.1.0",
+  "project": "ExampleApp",
+  "timestamp": "2026-06-24T10:00:00.000000Z",
+  "seed": 54321,
+  "totals": {
+    "tests": 47,
+    "passed": 45,
+    "failed": 2,
+    "skipped": 0,
+    "excluded": 0,
+    "invalid": 0
+  },
+  "times_us": {
+    "run": 892300,
+    "async": 234100,
+    "load": null
+  },
+  "failures": [
+    {
+      "module": "Elixir.ExampleAppWeb.UserAuthTest",
+      "name": "test login with valid credentials",
+      "file": "test/example_app_web/user_auth_test.exs",
+      "line": null,
+      "time_us": 67800,
+      "tags": {"integration": true},
+      "failure_kind": "exit",
+      "severity": "critical",
+      "classification": {
+        "type": "timeout",
+        "likely_layer": "Contract / function boundary",
+        "plain_english": "A test took longer than the allowed time and was killed. This may indicate a genuine timeout in the code under test, a locked resource, or a network issue.",
+        "common_causes": [
+          "The code under test genuinely times out (e.g. a slow database query)",
+          "The test machine is under load and the timeout is too tight",
+          "A resource (DB connection, API endpoint) is not available",
+          "An infinite loop or deadlock in the code under test"
+        ],
+        "suggested_checks": [
+          "Run the test in isolation with `mix test test/example_app_web/user_auth_test.exs:12`",
+          "Check if the timeout value is appropriate for the environment",
+          "Look for any recent changes to the code under test",
+          "Verify external services (DB, API) are reachable"
+        ],
+        "default_severity": "critical"
+      },
+      "impact": {
+        "area": "Auth",
+        "impact": "high",
+        "user_facing": true,
+        "critical": true,
+        "reason": "matches area \"Auth\""
+      }
+    },
+    {
+      "module": "Elixir.ExampleApp.AccountsTest",
+      "name": "test create user with duplicate email",
+      "file": "test/example_app/accounts_test.exs",
+      "line": null,
+      "time_us": 45100,
+      "tags": {"unit": true},
+      "failure_kind": "error",
+      "severity": "other",
+      "classification": {
+        "type": "assertion",
+        "likely_layer": "Ecto / data layer",
+        "plain_english": "An ExUnit assertion failed. The test expected a value but found a different one.",
+        "common_causes": [
+          "The code under test has a bug",
+          "The test expectation is wrong",
+          "Test data is not in the expected state",
+          "A recent refactor changed the expected behavior"
+        ],
+        "suggested_checks": [
+          "Run the specific test: `mix test test/example_app/accounts_test.exs:8`",
+          "Check the failure message for the actual vs expected values",
+          "Look at the test setup to ensure data is correct",
+          "Check for recent changes to the Accounts context"
+        ],
+        "default_severity": "other"
+      },
+      "impact": {
+        "area": "Accounts",
+        "impact": "high",
+        "user_facing": true,
+        "critical": false,
+        "reason": "matches area \"Accounts\""
+      }
+    }
+  ],
+  "slow": [
+    {"module": "Elixir.ExampleAppWeb.PageControllerTest", "name": "test renders 1000 widgets", "file": "test/example_app_web/page_controller_test.exs", "time_us": 145200},
+    {"module": "Elixir.ExampleApp.AccountsTest", "name": "test create user with valid attrs", "file": "test/example_app/accounts_test.exs", "time_us": 89300},
+    {"module": "Elixir.ExampleAppWeb.UserAuthTest", "name": "test login with valid credentials", "file": "test/example_app_web/user_auth_test.exs", "time_us": 67800},
+    {"module": "Elixir.ExampleApp.AccountsTest", "name": "test update user", "file": "test/example_app/accounts_test.exs", "time_us": 45100},
+    {"module": "Elixir.ExampleApp.AccountsTest", "name": "test get user by id", "file": "test/example_app/accounts_test.exs", "time_us": 23400}
+  ],
+  "classification_counts": {
+    "timeout": 1,
+    "assertion": 1
+  },
+  "next_commands": [
+    {"command": "mix test.lens -- --failed", "comment": "rerun the failing tests"},
+    {"command": "mix test.lens -- --stale", "comment": "check for stale tests"},
+    {"command": "mix test.lens -- --seed 54321", "comment": "reproduce this run"}
+  ]
+}

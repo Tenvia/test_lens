@@ -131,7 +131,9 @@ defmodule TestLens.ProjectConfigTest do
 
   test "from_keyword/1 falls back to :none for an invalid impact" do
     raw = [areas: [{"test/x", [label: "X", impact: :invalid_value]}]]
-    assert {:ok, %ProjectConfig{areas: %{"test/x" => %{impact: :none}}}} = ProjectConfig.from_keyword(raw)
+
+    assert {:ok, %ProjectConfig{areas: %{"test/x" => %{impact: :none}}}} =
+             ProjectConfig.from_keyword(raw)
   end
 
   test "from_keyword/1 ignores area entries that are not {string, list}" do
@@ -155,7 +157,9 @@ defmodule TestLens.ProjectConfigTest do
 
   test "from_keyword/1 filters critical_tags down to atoms only" do
     raw = [critical_tags: [:atom, "string", 123, nil, :another_atom, :last]]
-    assert {:ok, %ProjectConfig{critical_tags: [:atom, :another_atom, :last]}} = ProjectConfig.from_keyword(raw)
+
+    assert {:ok, %ProjectConfig{critical_tags: [:atom, :another_atom, :last]}} =
+             ProjectConfig.from_keyword(raw)
   end
 
   test "from_keyword/1 accepts empty keyword lists for all fields" do
@@ -171,17 +175,23 @@ defmodule TestLens.ProjectConfigTest do
 
   test "from_keyword/1 handles area with only label and defaults for impact and user_facing" do
     raw = [areas: [{"test/x", [label: "Only Label"]}]]
-    assert {:ok, %ProjectConfig{areas: %{"test/x" => %{impact: :none, user_facing: false}}}} = ProjectConfig.from_keyword(raw)
+
+    assert {:ok, %ProjectConfig{areas: %{"test/x" => %{impact: :none, user_facing: false}}}} =
+             ProjectConfig.from_keyword(raw)
   end
 
   test "from_keyword/1 converts non-string label to string" do
     raw = [areas: [{"test/x", [label: :atom_label]}]]
-    assert {:ok, %ProjectConfig{areas: %{"test/x" => %{label: "atom_label"}}}} = ProjectConfig.from_keyword(raw)
+
+    assert {:ok, %ProjectConfig{areas: %{"test/x" => %{label: "atom_label"}}}} =
+             ProjectConfig.from_keyword(raw)
   end
 
   test "from_keyword/1 falls back to Unnamed when label is nil" do
     raw = [areas: [{"test/x", [impact: :high]}]]
-    assert {:ok, %ProjectConfig{areas: %{"test/x" => %{label: "Unnamed"}}}} = ProjectConfig.from_keyword(raw)
+
+    assert {:ok, %ProjectConfig{areas: %{"test/x" => %{label: "Unnamed"}}}} =
+             ProjectConfig.from_keyword(raw)
   end
 
   # ---------------------------------------------------------------------------

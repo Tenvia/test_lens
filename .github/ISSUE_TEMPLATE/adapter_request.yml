@@ -1,0 +1,27 @@
+name: Adapter request
+description: Request a new built-in failure adapter (e.g. for a new library).
+labels: ["enhancement", "adapter"]
+body:
+  - type: input
+    id: library
+    attributes:
+      label: Library / error family
+      placeholder: "e.g. Ecto, Broadway, Oban"
+    validations:
+      required: true
+  - type: textarea
+    id: errors
+    attributes:
+      label: Error structs this library raises
+      placeholder: |
+        - SomeLibrary.SomeError
+        - SomeLibrary.OtherError
+      render: elixir
+    validations:
+      required: true
+  - type: textarea
+    id: reasoning
+    attributes:
+      label: Why should TestLens recognise this?
+    validations:
+      required: true

@@ -199,11 +199,13 @@ defmodule TestLens.JSONReport do
 
   defp failure_kind(%Result{failures: [{kind, _reason, _stack} | _]}) when is_atom(kind),
     do: Atom.to_string(kind)
+
   defp failure_kind(%Result{status: :invalid}), do: "invalid"
   defp failure_kind(_), do: "unknown"
 
   defp severity(%Result{} = r) do
     tuple = to_failure_tuple(r)
+
     case Classifier.classify_failure(tuple) do
       %{default_severity: s} -> Atom.to_string(s)
     end
@@ -224,12 +226,14 @@ defmodule TestLens.JSONReport do
   defp to_failure_tuple(%Result{failures: []} = r) when r.status == :invalid do
     {:invalid, nil, []}
   end
+
   defp to_failure_tuple(%Result{failures: [first | _] = fs}) when is_list(fs) do
     case first do
       {kind, reason, stack} when is_atom(kind) -> {kind, reason, stack}
       _ -> {:error, hd(fs), []}
     end
   end
+
   defp to_failure_tuple(%Result{}), do: {:error, nil, []}
 
   defp slow_entries(results) do
@@ -251,6 +255,7 @@ defmodule TestLens.JSONReport do
     failures
     |> Enum.map(fn r ->
       tuple = to_failure_tuple(r)
+
       tuple
       |> Classifier.classify_failure()
       |> Map.fetch!(:type)
@@ -305,22 +310,27 @@ defmodule TestLens.JSONReport do
   defp stringify_tags(tags) when is_map(tags) do
     Map.new(tags, fn {k, v} -> {Atom.to_string(k), stringify_tag_value(v)} end)
   end
+
   defp stringify_tags(_), do: %{}
 
   defp stringify_tag_value(v) when is_atom(v) and not is_nil(v) and v != true,
     do: Atom.to_string(v)
+
   defp stringify_tag_value(v), do: v
 
   # Convert a map with atom keys to a map with string keys, recursively.
   defp stringify_keys(map) when is_map(map) do
     Map.new(map, fn {k, v} -> {to_string_key(k), stringify_value(v)} end)
   end
+
   defp stringify_keys(other), do: other
 
   defp stringify_value(v) when is_map(v), do: stringify_keys(v)
   defp stringify_value(v) when is_list(v), do: Enum.map(v, &stringify_value/1)
+
   defp stringify_value(v) when is_atom(v) and not is_nil(v) and v != true and v != false,
     do: Atom.to_string(v)
+
   defp stringify_value(v), do: v
 
   defp to_string_key(k) when is_atom(k), do: Atom.to_string(k)

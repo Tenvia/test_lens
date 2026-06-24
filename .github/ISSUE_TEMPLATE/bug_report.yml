@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a bug in TestLens.
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: TestLens version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: elixir-version
+    attributes:
+      label: Elixir version
+      options:
+        - "1.18"
+        - "1.19"
+        - other
+    validations:
+      required: true
+  - type: input
+    id: otp-version
+    attributes:
+      label: OTP version
+      placeholder: "28"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. mix test.lens --json
+        2. observe X
+        3. expect Y
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: .test_lens.exs (if any)
+      render: elixir
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Relevant JSON / HTML artifact excerpts

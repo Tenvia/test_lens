@@ -1,6 +1,19 @@
 defmodule TestLens.Adapters.Phoenix do
   @moduledoc "Phoenix adapter: controllers, views, channels, routers, plugs."
-  @suffixes ["Controller", "ControllerTest", "View", "ViewTest", "Channel", "ChannelTest", "Endpoint", "EndpointTest", "Router", "RouterTest", "Plug", "PlugTest"]
+  @suffixes [
+    "Controller",
+    "ControllerTest",
+    "View",
+    "ViewTest",
+    "Channel",
+    "ChannelTest",
+    "Endpoint",
+    "EndpointTest",
+    "Router",
+    "RouterTest",
+    "Plug",
+    "PlugTest"
+  ]
 
   @spec category :: :phoenix
   def category, do: :phoenix

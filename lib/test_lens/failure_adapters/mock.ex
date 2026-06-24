@@ -20,7 +20,8 @@ defmodule TestLens.FailureAdapters.Mock do
     %{
       type: :mock,
       likely_layer: "Test double / boundary",
-      plain_english: "A mock or test double likely received an unexpected call, or an expectation was not met.",
+      plain_english:
+        "A mock or test double likely received an unexpected call, or an expectation was not met.",
       common_causes: [
         "changed call signature",
         "missing or stale expect/expect_call setup",

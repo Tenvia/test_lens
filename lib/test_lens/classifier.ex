@@ -24,16 +24,26 @@ defmodule TestLens.Classifier do
     # NOTE: Unknown is the implicit fallback; it always matches.
   ]
 
-  @type category :: :unit | :integration | :phoenix | :live_view | :ecto | :otp | :controller | :view | :channel | :unknown
+  @type category ::
+          :unit
+          | :integration
+          | :phoenix
+          | :live_view
+          | :ecto
+          | :otp
+          | :controller
+          | :view
+          | :channel
+          | :unknown
 
   @type classification :: %{
-    type: atom(),
-    likely_layer: String.t(),
-    plain_english: String.t(),
-    common_causes: [String.t()],
-    suggested_checks: [String.t()],
-    default_severity: :critical | :other
-  }
+          type: atom(),
+          likely_layer: String.t(),
+          plain_english: String.t(),
+          common_causes: [String.t()],
+          suggested_checks: [String.t()],
+          default_severity: :critical | :other
+        }
 
   @doc "Classifies an ExUnit.Test into a category."
   @spec classify(ExUnit.Test.t()) :: category()
@@ -100,6 +110,7 @@ defmodule TestLens.Classifier do
   @spec classify_failure({atom(), term(), list()}) :: classification()
   def classify_failure(failure) do
     adapters = Process.get(:tl_failure_adapters, @failure_adapters)
+
     Enum.find_value(adapters, unknown_details(), fn adapter ->
       if adapter.match?(failure), do: adapter.details()
     end)

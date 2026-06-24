@@ -14,13 +14,14 @@ defmodule TestLens.TerminalReporterTest do
     failures = Keyword.get(opts, :failures, [])
     file = Keyword.get(opts, :file, "test/foo_test.exs")
 
-    state = case status do
-      :passed -> nil
-      :failed -> {:failed, failures}
-      :skipped -> {:skipped, "wip"}
-      :excluded -> {:excluded, :skip_on_ci}
-      :invalid -> {:invalid, "bad test"}
-    end
+    state =
+      case status do
+        :passed -> nil
+        :failed -> {:failed, failures}
+        :skipped -> {:skipped, "wip"}
+        :excluded -> {:excluded, :skip_on_ci}
+        :invalid -> {:invalid, "bad test"}
+      end
 
     %Result{
       test: %ExUnit.Test{
@@ -95,13 +96,17 @@ defmodule TestLens.TerminalReporterTest do
   end
 
   test "render_summary/4 with an integer seed contains seed: N" do
-    iodata = TerminalReporter.render_summary(config(), [], %{run: 0, async: nil, load: nil}, 12345)
+    iodata =
+      TerminalReporter.render_summary(config(), [], %{run: 0, async: nil, load: nil}, 12345)
+
     bin = IO.iodata_to_binary(iodata)
     assert bin =~ "seed: 12345"
   end
 
   test "render_summary/4 with seed = :random contains random" do
-    iodata = TerminalReporter.render_summary(config(), [], %{run: 0, async: nil, load: nil}, :random)
+    iodata =
+      TerminalReporter.render_summary(config(), [], %{run: 0, async: nil, load: nil}, :random)
+
     bin = IO.iodata_to_binary(iodata)
     assert bin =~ "seed: random"
   end
@@ -114,7 +119,10 @@ defmodule TestLens.TerminalReporterTest do
 
   test "render_summary/4 with one failed result includes failed" do
     result = error_result()
-    iodata = TerminalReporter.render_summary(config(), [result], %{run: 0, async: nil, load: nil}, nil)
+
+    iodata =
+      TerminalReporter.render_summary(config(), [result], %{run: 0, async: nil, load: nil}, nil)
+
     bin = IO.iodata_to_binary(iodata)
     assert bin =~ "failed"
   end

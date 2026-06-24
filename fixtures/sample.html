@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="generator" content="TestLens 0.1.0">
+  <title>ExampleApp — 45 passed, 2 failed — seed 54321</title>
+  <style>
+:root {
+  color-scheme: light dark;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  color: #1a1a1a;
+  background: #fafafa;
+  line-height: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  body { color: #e6e6e6; background: #161616; }
+  pre, code { background: #1f1f1f; }
+  .card { background: #1f1f1f; }
+  th { background: #262626; }
+}
+h1, h2, h3 { color: inherit; }
+h1 { margin: 0 0 0.25rem 0; font-size: 1.75rem; }
+h2 { margin: 2rem 0 0.75rem 0; padding-bottom: 0.4rem;
+     border-bottom: 1px solid #d0d0d0; font-size: 1.25rem; }
+h3 { margin: 1.25rem 0 0.5rem 0; font-size: 1rem; }
+p, ul, ol { margin: 0.5rem 0; }
+code, pre {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+}
+code { background: #ececec; padding: 0.05rem 0.35rem; border-radius: 3px; }
+pre { background: #ececec; padding: 0.75rem; border-radius: 6px;
+      overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+.muted { color: #6a6a6a; }
+.passed { color: #0a7d2c; font-weight: 500; }
+.failed { color: #c4314b; font-weight: 500; }
+.skipped { color: #806000; }
+.critical { color: #c4314b; font-weight: 600; }
+.other { color: #6a6a6a; }
+.tag { display: inline-block; background: #e6e6e6; color: #333;
+       padding: 0.05rem 0.45rem; border-radius: 3px; font-size: 0.8rem;
+       margin: 0 0.15rem 0.15rem 0; }
+.meta { color: #6a6a6a; font-size: 0.875rem; }
+.card { background: #ffffff; border: 1px solid #d0d0d0;
+        border-radius: 6px; padding: 0.75rem 1rem; margin: 0.5rem 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.5rem; margin: 0.5rem 0; }
+.stat { background: #ffffff; border: 1px solid #d0d0d0;
+        border-radius: 6px; padding: 0.5rem 0.75rem; }
+.stat .num { font-size: 1.5rem; font-weight: 600; }
+.stat .label { font-size: 0.75rem; color: #6a6a6a; text-transform: uppercase;
+               letter-spacing: 0.05em; }
+table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
+th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid #e6e6e6; }
+th { background: #f0f0f0; font-weight: 600; }
+details { background: #ffffff; border: 1px solid #d0d0d0;
+          border-radius: 6px; padding: 0.5rem 0.75rem; margin: 0.4rem 0; }
+details[open] { padding-bottom: 0.75rem; }
+summary { cursor: pointer; font-weight: 500; }
+summary::-webkit-details-marker { margin-right: 0.5rem; }
+a { color: #0a5dc2; text-decoration: none; }
+a:hover { text-decoration: underline; }
+footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d0d0d0;
+         color: #6a6a6a; font-size: 0.8rem; }
+@media print {
+  body { background: white; max-width: none; padding: 0.5rem; }
+  .card, details, .stat, table { box-shadow: none; }
+  details { page-break-inside: avoid; }
+  h2 { page-break-after: avoid; }
+}
+  </style>
+</head>
+<body>
+<header>
+  <h1>TestLens report</h1>
+  <p class="meta">ExampleApp · 2026-06-24 10:00:00 UTC · seed: 54321</p>
+  <p class="meta">Run time: 892.3ms</p>
+  <p class="meta">45 of 47 tests passed · <span class="failed">2 failed</span></p>
+</header>
+<section id="summary">
+  <h2>Summary</h2>
+  <div class="grid">
+    <div class="stat">
+      <div class="num">47</div>
+      <div class="label">tests</div>
+    </div>
+    <div class="stat">
+      <div class="num passed">45</div>
+      <div class="label">passed</div>
+    </div>
+    <div class="stat">
+      <div class="num failed">2</div>
+      <div class="label">failed</div>
+    </div>
+    <div class="stat">
+      <div class="num">0</div>
+      <div class="label">skipped</div>
+    </div>
+    <div class="stat">
+      <div class="num muted">0</div>
+      <div class="label">excluded</div>
+    </div>
+    <div class="stat">
+      <div class="num muted">0</div>
+      <div class="label">invalid</div>
+    </div>
+  </div>
+  <p class="meta">Total run time: 892.3ms</p>
+</section>
+<section id="critical-failures">
+  <h2>Critical failures (1)</h2>
+  <div class="card">
+    <p><strong>ExampleAppWeb.UserAuthTest</strong>
+      <span class="muted"> · </span>
+      test login with valid credentials
+      <span class="critical"> [critical]</span>
+    </p>
+    <p class="meta">file: test/example_app_web/user_auth_test.exs</p>
+    <p class="meta">type: <code>timeout</code> · layer: Contract / function boundary</p>
+    <p class="meta">impact: <code>high</code> · area: Auth · user_facing: true</p>
+    <p><span class="tag">integration</span></p>
+  </div>
+</section>
+<section id="failures-by-area">
+  <h2>Failures by area</h2>
+  <table>
+    <thead><tr><th>Area</th><th>Failures</th></tr></thead>
+    <tbody>
+      <tr><td>Accounts</td><td>1</td></tr>
+      <tr><td>Auth</td><td>1</td></tr>
+    </tbody>
+  </table>
+</section>
+<section id="failures-by-type">
+  <h2>Failures by type</h2>
+  <table>
+    <thead><tr><th>Type</th><th>Count</th></tr></thead>
+    <tbody>
+      <tr><td><code>assertion</code></td><td>1</td></tr>
+      <tr><td><code>timeout</code></td><td>1</td></tr>
+    </tbody>
+  </table>
+</section>
+<section id="slow-tests">
+  <h2>Slow tests (top 5)</h2>
+  <table>
+    <thead><tr><th>Time</th><th>Module</th><th>Test</th><th>File</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>145.2ms</code></td>
+        <td>ExampleAppWeb.PageControllerTest</td>
+        <td>test renders 1000 widgets</td>
+        <td>test/example_app_web/page_controller_test.exs</td>
+      </tr>
+      <tr>
+        <td><code>89.3ms</code></td>
+        <td>ExampleApp.AccountsTest</td>
+        <td>test create user with valid attrs</td>
+        <td>test/example_app/accounts_test.exs</td>
+      </tr>
+      <tr>
+        <td><code>67.8ms</code></td>
+        <td>ExampleAppWeb.UserAuthTest</td>
+        <td>test login with valid credentials</td>
+        <td>test/example_app_web/user_auth_test.exs</td>
+      </tr>
+      <tr>
+        <td><code>45.1ms</code></td>
+        <td>ExampleApp.AccountsTest</td>
+        <td>test update user</td>
+        <td>test/example_app/accounts_test.exs</td>
+      </tr>
+      <tr>
+        <td><code>23.4ms</code></td>
+        <td>ExampleApp.AccountsTest</td>
+        <td>test get user by id</td>
+        <td>test/example_app/accounts_test.exs</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+<section id="suggested-reruns">
+  <h2>Suggested reruns</h2>
+  <ul>
+    <li><code>mix test.lens -- --failed</code> <span class="muted">— rerun the failing tests</span></li>
+    <li><code>mix test.lens -- --stale</code> <span class="muted">— check for stale tests</span></li>
+    <li><code>mix test.lens -- --seed 54321</code> <span class="muted">— reproduce this run</span></li>
+  </ul>
+</section>
+<section id="raw-failure-details">
+  <h2>Raw failure details (2)</h2>
+  <p class="meta">Open each entry for the full classification, impact, and raw failure body.</p>
+  <details>
+    <summary>ExampleAppWeb.UserAuthTest · test login with valid credentials <span class="critical">[critical]</span> <span class="muted">— test/example_app_web/user_auth_test.exs</span></summary>
+    <h3>Classification</h3>
+    <table>
+      <tr><th>Type</th><td>timeout</td></tr>
+      <tr><th>Likely layer</th><td>Contract / function boundary</td></tr>
+      <tr><th>Plain English</th><td>A test took longer than the allowed time and was killed. This may indicate a genuine timeout in the code under test, a locked resource, or a network issue.</td></tr>
+      <tr><th>Default severity</th><td>critical</td></tr>
+    </table>
+    <h3>Common causes</h3>
+    <ul><li>The code under test genuinely times out (e.g. a slow database query)</li><li>The test machine is under load and the timeout is too tight</li><li>A resource (DB connection, API endpoint) is not available</li><li>An infinite loop or deadlock in the code under test</li></ul>
+    <h3>Suggested checks</h3>
+    <ul><li>Run the test in isolation with `mix test test/example_app_web/user_auth_test.exs:12`</li><li>Check if the timeout value is appropriate for the environment</li><li>Look for any recent changes to the code under test</li><li>Verify external services (DB, API) are reachable</li></ul>
+    <h3>Impact</h3>
+    <table>
+      <tr><th>Area</th><td>Auth</td></tr>
+      <tr><th>Impact</th><td>high</td></tr>
+      <tr><th>User-facing</th><td>true</td></tr>
+      <tr><th>Critical</th><td>true</td></tr>
+      <tr><th>Reason</th><td>matches area "Auth"</td></tr>
+    </table>
+    <h3>Tags</h3>
+    <p><span class="tag">integration</span></p>
+    <h3>Raw failure</h3>
+    <pre>** (EXIT) process exited with reason: timeout: 5000ms</pre>
+  </details>
+  <details>
+    <summary>ExampleApp.AccountsTest · test create user with duplicate email <span class="other">[other]</span> <span class="muted">— test/example_app/accounts_test.exs</span></summary>
+    <h3>Classification</h3>
+    <table>
+      <tr><th>Type</th><td>assertion</td></tr>
+      <tr><th>Likely layer</th><td>Ecto / data layer</td></tr>
+      <tr><th>Plain English</th><td>An ExUnit assertion failed. The test expected a value but found a different one.</td></tr>
+      <tr><th>Default severity</th><td>other</td></tr>
+    </table>
+    <h3>Common causes</h3>
+    <ul><li>The code under test has a bug</li><li>The test expectation is wrong</li><li>Test data is not in the expected state</li><li>A recent refactor changed the expected behavior</li></ul>
+    <h3>Suggested checks</h3>
+    <ul><li>Run the specific test: `mix test test/example_app/accounts_test.exs:8`</li><li>Check the failure message for the actual vs expected values</li><li>Look at the test setup to ensure data is correct</li><li>Check for recent changes to the Accounts context</li></ul>
+    <h3>Impact</h3>
+    <table>
+      <tr><th>Area</th><td>Accounts</td></tr>
+      <tr><th>Impact</th><td>high</td></tr>
+      <tr><th>User-facing</th><td>true</td></tr>
+      <tr><th>Critical</th><td>false</td></tr>
+      <tr><th>Reason</th><td>matches area "Accounts"</td></tr>
+    </table>
+    <h3>Tags</h3>
+    <p><span class="tag">unit</span></p>
+    <h3>Raw failure</h3>
+    <pre>Assertion with == failed
+code:  assert user.email == "taken@example.com"
+left:  "new@example.com"
+right: "taken@example.com"</pre>
+  </details>
+</section>
+<footer>
+  <p>Generated by <a href="https://github.com/testlens/test_lens">TestLens 0.1.0</a></p>
+  <p class="meta">Schema is part of the v0.1.x contract. This report is self-contained: no external CSS, no JavaScript, no web fonts.</p>
+</footer>
+</body>
+</html>

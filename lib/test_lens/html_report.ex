@@ -90,6 +90,7 @@ defmodule TestLens.HTMLReport do
           :ok | {:error, term()}
   def write(path, results, times_us, seed) do
     html = build(results, times_us, seed)
+
     try do
       path |> Path.dirname() |> File.mkdir_p!()
       File.write!(path, html)
@@ -114,6 +115,7 @@ defmodule TestLens.HTMLReport do
 
   defp head(project, results, seed, times_us) do
     title = build_title(project, results, seed, times_us)
+
     [
       ~s(<head>\n),
       ~s(  <meta charset="utf-8">\n),
@@ -131,11 +133,14 @@ defmodule TestLens.HTMLReport do
     project_str = project || "TestLens"
     passed = Enum.count(results, &Result.passed?/1)
     failed = Enum.count(results, &Result.failed?/1)
-    seed_str = case seed do
-      n when is_integer(n) -> " — seed #{n}"
-      :random -> " — seed random"
-      _ -> ""
-    end
+
+    seed_str =
+      case seed do
+        n when is_integer(n) -> " — seed #{n}"
+        :random -> " — seed random"
+        _ -> ""
+      end
+
     "#{project_str} — #{passed} passed, #{failed} failed#{seed_str}"
   end
 
@@ -226,19 +231,25 @@ defmodule TestLens.HTMLReport do
     passed = Enum.count(results, &Result.passed?/1)
     failed = Enum.count(results, &Result.failed?/1)
     total = length(results)
-    seed_str = case seed do
-      n when is_integer(n) -> "seed: #{n}"
-      :random -> "seed: random"
-      _ -> ""
-    end
+
+    seed_str =
+      case seed do
+        n when is_integer(n) -> "seed: #{n}"
+        :random -> "seed: random"
+        _ -> ""
+      end
+
     time_str = format_times(times_us)
 
     [
       "<header>\n",
       "  <h1>TestLens report</h1>\n",
-      "  <p class=\"meta\">" <> escape_html(project_str) <> " · " <> escape_html(timestamp) <> " · " <> escape_html(seed_str) <> "</p>\n",
+      "  <p class=\"meta\">" <>
+        escape_html(project_str) <>
+        " · " <> escape_html(timestamp) <> " · " <> escape_html(seed_str) <> "</p>\n",
       "  <p class=\"meta\">Run time: " <> escape_html(time_str) <> "</p>\n",
-      "  <p class=\"meta\">" <> Integer.to_string(passed) <> " of " <> Integer.to_string(total) <> " tests passed",
+      "  <p class=\"meta\">" <>
+        Integer.to_string(passed) <> " of " <> Integer.to_string(total) <> " tests passed",
       if failed > 0 do
         " · <span class=\"failed\">" <> Integer.to_string(failed) <> " failed</span>"
       else
@@ -258,10 +269,12 @@ defmodule TestLens.HTMLReport do
       excluded: Enum.count(results, fn r -> r.status == :excluded end),
       invalid: Enum.count(results, fn r -> r.status == :invalid end)
     }
+
     time_str = format_times(times_us)
 
     stat = fn num, label, klass ->
       klass_attr = if klass != "", do: " class=\"" <> klass <> "\"", else: ""
+
       [
         "    <div class=\"stat\">\n",
         "      <div" <> klass_attr <> ">" <> Integer.to_string(num) <> "</div>\n",
@@ -289,13 +302,15 @@ defmodule TestLens.HTMLReport do
   defp critical_failures_section([]), do: ""
 
   defp critical_failures_section(failures) do
-    critical = Enum.filter(failures, fn r ->
-      tuple = to_failure_tuple(r)
-      case Classifier.classify_failure(tuple) do
-        %{default_severity: :critical} -> true
-        _ -> false
-      end
-    end)
+    critical =
+      Enum.filter(failures, fn r ->
+        tuple = to_failure_tuple(r)
+
+        case Classifier.classify_failure(tuple) do
+          %{default_severity: :critical} -> true
+          _ -> false
+        end
+      end)
 
     if critical == [] do
       ""
@@ -333,6 +348,7 @@ defmodule TestLens.HTMLReport do
       failures
       |> Enum.map(fn r ->
         tuple = to_failure_tuple(r)
+
         tuple
         |> Classifier.classify_failure()
         |> Map.fetch!(:type)
@@ -384,6 +400,7 @@ defmodule TestLens.HTMLReport do
 
   defp suggested_reruns_section(results, seed) do
     cmds = compute_next_commands(results, seed)
+
     if cmds == [] do
       ""
     else
@@ -504,15 +521,22 @@ defmodule TestLens.HTMLReport do
       "    <p><strong>" <> escape_html(inspect(r.module)) <> "</strong>\n",
       "      <span class=\"muted\"> · </span>\n",
       escape_html(Atom.to_string(r.name)),
-      "      <span class=\"" <> severity_class <> "\"> [" <> escape_html(severity_class) <> "]</span>\n",
+      "      <span class=\"" <>
+        severity_class <> "\"> [" <> escape_html(severity_class) <> "]</span>\n",
       "    </p>\n",
       if r.file do
         "    <p class=\"meta\">file: " <> escape_html(r.file) <> "</p>\n"
       else
         ""
       end,
-      "    <p class=\"meta\">type: <code>" <> escape_html(type_str) <> "</code> · layer: " <> escape_html(classification.likely_layer) <> "</p>\n",
-      "    <p class=\"meta\">impact: <code>" <> escape_html(Atom.to_string(impact.impact)) <> "</code> · area: " <> escape_html(impact.area || "(none)") <> " · user_facing: " <> to_string(impact.user_facing) <> "</p>\n",
+      "    <p class=\"meta\">type: <code>" <>
+        escape_html(type_str) <>
+        "</code> · layer: " <> escape_html(classification.likely_layer) <> "</p>\n",
+      "    <p class=\"meta\">impact: <code>" <>
+        escape_html(Atom.to_string(impact.impact)) <>
+        "</code> · area: " <>
+        escape_html(impact.area || "(none)") <>
+        " · user_facing: " <> to_string(impact.user_facing) <> "</p>\n",
       if r.tags != %{} do
         "    <p>" <> tag_list(r.tags) <> "</p>\n"
       else
@@ -530,7 +554,8 @@ defmodule TestLens.HTMLReport do
       "    <thead><tr><th>Area</th><th>Failures</th></tr></thead>\n",
       "    <tbody>\n",
       Enum.map(by_area, fn {area, list} ->
-        "      <tr><td>" <> escape_html(area) <> "</td><td>" <> Integer.to_string(length(list)) <> "</td></tr>\n"
+        "      <tr><td>" <>
+          escape_html(area) <> "</td><td>" <> Integer.to_string(length(list)) <> "</td></tr>\n"
       end),
       "    </tbody>\n",
       "  </table>\n"
@@ -545,7 +570,8 @@ defmodule TestLens.HTMLReport do
       "    <thead><tr><th>Type</th><th>Count</th></tr></thead>\n",
       "    <tbody>\n",
       Enum.map(by_type, fn {type, count} ->
-        "      <tr><td><code>" <> escape_html(type) <> "</code></td><td>" <> Integer.to_string(count) <> "</td></tr>\n"
+        "      <tr><td><code>" <>
+          escape_html(type) <> "</code></td><td>" <> Integer.to_string(count) <> "</td></tr>\n"
       end),
       "    </tbody>\n",
       "  </table>\n"
@@ -568,12 +594,14 @@ defmodule TestLens.HTMLReport do
       "<span class=\"tag\">" <> escape_html(label) <> "</span>"
     end)
   end
+
   defp tag_list(_), do: ""
 
   defp footer do
     [
       "<footer>\n",
-      "  <p>Generated by <a href=\"https://github.com/testlens/test_lens\">TestLens " <> escape_html(TestLens.version()) <> "</a></p>\n",
+      "  <p>Generated by <a href=\"https://github.com/testlens/test_lens\">TestLens " <>
+        escape_html(TestLens.version()) <> "</a></p>\n",
       "  <p class=\"meta\">Schema is part of the v0.1.x contract. This report is self-contained: no external CSS, no JavaScript, no web fonts.</p>\n",
       "</footer>\n"
     ]
@@ -589,6 +617,7 @@ defmodule TestLens.HTMLReport do
       _ -> {:error, nil, []}
     end
   end
+
   defp to_failure_tuple(%Result{status: :invalid}), do: {:invalid, nil, []}
   defp to_failure_tuple(%Result{}), do: {:error, nil, []}
 
@@ -600,10 +629,13 @@ defmodule TestLens.HTMLReport do
         kind_str = Atom.to_string(kind)
         reason_str = safe_exception_message(reason)
         "[#{kind_str}] #{reason_str}\n#{stack_str}"
-      other -> inspect(other)
+
+      other ->
+        inspect(other)
     end)
     |> Enum.join("\n\n")
   end
+
   defp format_raw_failures(_), do: ""
 
   defp safe_exception_message(term) do
@@ -617,6 +649,7 @@ defmodule TestLens.HTMLReport do
   defp format_stack_frame({mod, fun, arity_or_args, _loc}) do
     inspect(mod) <> "." <> Atom.to_string(fun) <> "/" <> inspect(arity_or_args)
   end
+
   defp format_stack_frame(other), do: inspect(other)
 
   defp format_times(times_us) when is_map(times_us) do
@@ -631,6 +664,7 @@ defmodule TestLens.HTMLReport do
       true -> "—"
     end
   end
+
   defp format_times(_), do: "—"
 
   defp format_time_us(us) when is_integer(us) do
@@ -640,26 +674,34 @@ defmodule TestLens.HTMLReport do
       true -> "#{us}µs"
     end
   end
+
   defp format_time_us(_), do: "—"
 
   defp format_timestamp(dt) do
     {{y, mo, d}, {h, mi, s}} = dt |> DateTime.to_naive() |> NaiveDateTime.to_erl()
+
     :io_lib.format("~4..0B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B UTC", [y, mo, d, h, mi, s])
     |> IO.iodata_to_binary()
   end
 
   defp compute_next_commands(results, seed) do
     cmds = []
-    cmds = if Enum.any?(results, &Result.failed?/1) do
-      [{"mix test.lens -- --failed", "rerun the failing tests"} | cmds]
-    else
-      cmds
-    end
+
+    cmds =
+      if Enum.any?(results, &Result.failed?/1) do
+        [{"mix test.lens -- --failed", "rerun the failing tests"} | cmds]
+      else
+        cmds
+      end
+
     cmds = [{"mix test.lens -- --stale", "check for stale tests"} | cmds]
+
     case seed do
       n when is_integer(n) ->
         [{"mix test.lens -- --seed #{n}", "reproduce this run"} | cmds]
-      _ -> cmds
+
+      _ ->
+        cmds
     end
     |> Enum.reverse()
   end
@@ -675,5 +717,6 @@ defmodule TestLens.HTMLReport do
     |> String.replace("\"", "&quot;")
     |> String.replace("'", "&#39;")
   end
+
   defp escape_html(other), do: escape_html(to_string(other))
 end
