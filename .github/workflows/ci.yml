@@ -29,7 +29,13 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          version-file: .tool-versions
+          # Note: we deliberately do NOT use `version-file: .tool-versions`
+          # here. The matrix below selects the Elixir/OTP versions, and
+          # `setup-beam@v1` errors out if both `version-file` and an
+          # explicit `version`/`otp-version` are set (unless
+          # `version-type: strict`, which would force the matrix
+          # versions to be ignored). The .tool-versions file is for
+          # local asdf users; CI is controlled by the matrix.
           version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
 
