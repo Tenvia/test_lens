@@ -393,6 +393,7 @@ defmodule TestLens.TerminalReporterTest do
     setup do
       dir = Path.join(System.tmp_dir!(), "test_lens_impact_#{System.unique_integer([:positive])}")
       File.mkdir_p!(dir)
+
       File.write!(Path.join(dir, ".test_lens.exs"), """
       [
         project: "TestApp",
@@ -405,6 +406,7 @@ defmodule TestLens.TerminalReporterTest do
 
       prev_cwd = File.cwd!()
       File.cd!(dir)
+
       on_exit(fn ->
         File.cd!(prev_cwd)
         File.rm_rf!(dir)
@@ -416,12 +418,13 @@ defmodule TestLens.TerminalReporterTest do
     test "render_failures/2 populates impact from the project config (not 'unknown')" do
       cfg = %Config{color: false}
 
-      r = build_result(
-            file: "test/known/example_test.exs",
-            state: {:failed, []},
-            status: :failed,
-            failures: [{:error, %RuntimeError{message: "boom"}, []}]
-          )
+      r =
+        build_result(
+          file: "test/known/example_test.exs",
+          state: {:failed, []},
+          status: :failed,
+          failures: [{:error, %RuntimeError{message: "boom"}, []}]
+        )
 
       iodata = TerminalReporter.render_failures(cfg, [r])
       bin = IO.iodata_to_binary(iodata)
@@ -436,12 +439,13 @@ defmodule TestLens.TerminalReporterTest do
     test "render_failures/2 shows the area label from the project config" do
       cfg = %Config{color: false}
 
-      r = build_result(
-            file: "test/known/example_test.exs",
-            state: {:failed, []},
-            status: :failed,
-            failures: [{:error, %RuntimeError{message: "boom"}, []}]
-          )
+      r =
+        build_result(
+          file: "test/known/example_test.exs",
+          state: {:failed, []},
+          status: :failed,
+          failures: [{:error, %RuntimeError{message: "boom"}, []}]
+        )
 
       iodata = TerminalReporter.render_failures(cfg, [r])
       bin = IO.iodata_to_binary(iodata)
@@ -454,12 +458,13 @@ defmodule TestLens.TerminalReporterTest do
       cfg = %Config{color: false}
 
       # File path doesn't match any prefix in the .test_lens.exs above.
-      r = build_result(
-            file: "test/unknown/example_test.exs",
-            state: {:failed, []},
-            status: :failed,
-            failures: [{:error, %RuntimeError{message: "boom"}, []}]
-          )
+      r =
+        build_result(
+          file: "test/unknown/example_test.exs",
+          state: {:failed, []},
+          status: :failed,
+          failures: [{:error, %RuntimeError{message: "boom"}, []}]
+        )
 
       iodata = TerminalReporter.render_failures(cfg, [r])
       bin = IO.iodata_to_binary(iodata)
