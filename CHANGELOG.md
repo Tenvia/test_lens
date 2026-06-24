@@ -31,6 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   describe block in `terminal_reporter_test.exs` lock the wiring in
   (one per scenario: matched area, unmatched area, hardcoded-`unknown`
   regression).
+- `TestLens.Impact.find_area/2` now relativises the test file path
+  via `Path.relative_to_cwd/1` before the `String.starts_with?/2`
+  prefix check. `ExUnit.TestModule.file` is an absolute path; the
+  consumer's `.test_lens.exs` area keys are relative to cwd. Without
+  this, every consumer saw `area: (no area)` and `impact: none`
+  regardless of their config. The function is now `def` (was `defp`)
+  so the new regression tests in `impact_test.exs` can call it
+  directly.
 
 ## [0.1.0] - 2026-06-24
 
