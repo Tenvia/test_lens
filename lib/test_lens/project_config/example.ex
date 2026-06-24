@@ -14,7 +14,7 @@ defmodule TestLens.ProjectConfig.Example do
     """
     [
       project: "ExampleApp",
-      areas: [
+      areas: %{
         "test/example_app/accounts" => [
           label: "Accounts",
           impact: :high,
@@ -25,12 +25,12 @@ defmodule TestLens.ProjectConfig.Example do
           impact: :high,
           user_facing: true
         ],
-        "test/example_app/workers" => [
+        "test/example_app_workers" => [
           label: "Background jobs",
           impact: :medium,
           user_facing: false
         ]
-      ],
+      },
       critical_tags: [:payment, :security, :data_integrity]
     ]
     """
