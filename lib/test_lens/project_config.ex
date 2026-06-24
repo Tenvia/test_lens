@@ -28,13 +28,13 @@ defmodule TestLens.ProjectConfig do
   ```elixir
   [
     project: String.t(),         # optional, informational only
-    areas: [                     # optional, default: []
+    areas: %{                    # optional, default: %{}
       String.t() => [            # path prefix (e.g. "test/example_app/accounts")
         label: String.t(),       # required
         impact: :high | :medium | :low | :none,  # default: :none
         user_facing: boolean()   # default: false
       ]
-    ],
+    },
     critical_tags: [atom()]      # optional, default: []
   ]
   ```
@@ -47,7 +47,8 @@ defmodule TestLens.ProjectConfig do
     keyword lists. A test file's path is matched against the prefixes
     using `String.starts_with?/2`. The first matching prefix wins (no
     glob expansion). Areas with invalid or missing `:label` fall back
-    to `"Unnamed"`.
+    to `"Unnamed"`. A list of `{path, [descriptor]}` tuples is also
+    accepted; the loader normalises both forms to a map.
   - `critical_tags` — a list of ExUnit tag atoms. When a test carries
     one of these tags it is marked `critical: true` regardless of
     which area (if any) its file path matches.
