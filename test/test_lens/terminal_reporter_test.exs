@@ -342,4 +342,43 @@ defmodule TestLens.TerminalReporterTest do
     bin = IO.iodata_to_binary(iodata)
     assert bin =~ "seed"
   end
+
+  # ---------------------------------------------------------------------------
+  # --no-color regression
+  # ---------------------------------------------------------------------------
+
+  test "render/4 with color: false produces no ANSI escape codes (header + summary)" do
+    cfg = %Config{color: false}
+    iodata = TerminalReporter.render(cfg, [], %{run: 0, async: nil, load: nil}, nil)
+    bin = IO.iodata_to_binary(iodata)
+    refute bin =~ "\e[", "TTY output must contain no ANSI escapes when color is false"
+  end
+
+  test "render_header/1 with color: false contains no ANSI escapes" do
+    cfg = %Config{color: false}
+    iodata = TerminalReporter.render_header(cfg)
+    bin = IO.iodata_to_binary(iodata)
+    refute bin =~ "\e["
+  end
+
+  test "render_failures/2 with color: false contains no ANSI escapes" do
+    cfg = %Config{color: false}
+    iodata = TerminalReporter.render_failures(cfg, [error_result()])
+    bin = IO.iodata_to_binary(iodata)
+    refute bin =~ "\e["
+  end
+
+  test "render_slow_tests/2 with color: false contains no ANSI escapes" do
+    cfg = %Config{color: false}
+    iodata = TerminalReporter.render_slow_tests(cfg, [slow_result()])
+    bin = IO.iodata_to_binary(iodata)
+    refute bin =~ "\e["
+  end
+
+  test "render_next_commands/3 with color: false contains no ANSI escapes" do
+    cfg = %Config{color: false}
+    iodata = TerminalReporter.render_next_commands(cfg, [error_result()], 42)
+    bin = IO.iodata_to_binary(iodata)
+    refute bin =~ "\e["
+  end
 end

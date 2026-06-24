@@ -7,12 +7,19 @@ defmodule TestLens.TerminalReporter do
   @dim "\e[2m"
   @reset reset()
 
-  defp red(t), do: [red(), t, @reset]
-  defp green(t), do: [green(), t, @reset]
-  defp yellow(t), do: [yellow(), t, @reset]
-  defp cyan(t), do: [cyan(), t, @reset]
-  defp bright(t), do: [bright(), t, @reset]
-  defp dim_text(t), do: [@dim, t, @reset]
+  # All colorize helpers take a `color?` boolean. When false, they return
+  # the input unchanged so `--no-color` (or any non-tty sink) produces
+  # plain ASCII. Inside the helpers we use fully-qualified IO.ANSI calls
+  # because the unqualified names (red/0, green/0, ...) would shadow
+  # the same-named /2 helpers in this module.
+  defp yellow(t, true), do: [IO.ANSI.yellow(), t, @reset]
+  defp yellow(t, false), do: t
+  defp cyan(t, true), do: [IO.ANSI.cyan(), t, @reset]
+  defp cyan(t, false), do: t
+  defp bright(t, true), do: [IO.ANSI.bright(), t, @reset]
+  defp bright(t, false), do: t
+  defp dim_text(t, true), do: [@dim, t, @reset]
+  defp dim_text(t, false), do: t
 
   @spec render(TestLens.Config.t(), [TestLens.Result.t()], map(), integer() | :random | nil) ::
           IO.iodata()
@@ -36,9 +43,9 @@ defmodule TestLens.TerminalReporter do
   end
 
   @spec render_header(TestLens.Config.t()) :: IO.iodata()
-  def render_header(%TestLens.Config{} = _config) do
-    label = bright(["== TestLens =="])
-    sub = cyan("Improved ExUnit output")
+  def render_header(%TestLens.Config{} = config) do
+    label = bright(["== TestLens =="], config.color)
+    sub = cyan("Improved ExUnit output", config.color)
     [label, "\n", sub, "\n\n"]
   end
 
@@ -78,10 +85,10 @@ defmodule TestLens.TerminalReporter do
     [summary, "\n"]
   end
 
-  defp colorize_pass(n, true), do: [green("#{n} passed")]
+  defp colorize_pass(n, true), do: [IO.ANSI.green(), "#{n} passed", @reset]
   defp colorize_pass(n, false), do: "#{n} passed"
 
-  defp colorize_fail(n, true), do: [red("#{n} failed")]
+  defp colorize_fail(n, true), do: [IO.ANSI.red(), "#{n} failed", @reset]
   defp colorize_fail(n, false), do: "#{n} failed"
 
   defp format_seed(nil), do: ""
@@ -132,12 +139,12 @@ defmodule TestLens.TerminalReporter do
   end
 
   defp severity_header(:critical, count, color) do
-    label = if color, do: bright("── Critical (#{count}) ──"), else: "── Critical (#{count}) ──"
+    label = bright("── Critical (#{count}) ──", color)
     ["\n", label, "\n"]
   end
 
   defp severity_header(:other, count, color) do
-    label = if color, do: bright("── Other (#{count}) ──"), else: "── Other (#{count}) ──"
+    label = bright("── Other (#{count}) ──", color)
     ["\n", label, "\n"]
   end
 
@@ -154,26 +161,26 @@ defmodule TestLens.TerminalReporter do
     test_name = Atom.to_string(r.name)
 
     # Line 1: ✗ ModuleName > test "name"
-    line1 = [colorize_fail_icon(color), " ", bright("#{module_name} > #{test_name}"), "\n"]
+    line1 = [colorize_fail_icon(color), " ", bright("#{module_name} > #{test_name}", color), "\n"]
 
     # Line 2: file
     file_str = if r.file, do: r.file, else: "(unknown)"
-    line2 = ["    file:    ", dim_text(file_str), "\n"]
+    line2 = ["    file:    ", dim_text(file_str, color), "\n"]
 
     # Line 3: type
     type_label = type_label(r)
-    line3 = ["    type:    ", yellow(type_label), "\n"]
+    line3 = ["    type:    ", yellow(type_label, color), "\n"]
 
     # Line 4: layer
     layer_label = TestLens.Classifier.category_label(TestLens.Classifier.classify(r.test))
-    line4 = ["    layer:   ", cyan(layer_label), "\n"]
+    line4 = ["    layer:   ", cyan(layer_label, color), "\n"]
 
     # Line 5: impact (always "unknown" in v0.1.0)
-    line5 = ["    impact:  ", dim_text("unknown"), "\n"]
+    line5 = ["    impact:  ", dim_text("unknown", color), "\n"]
 
     # Line 6: rerun
     rerun_cmd = rerun_command(r)
-    line6 = ["    rerun:   ", cyan(rerun_cmd), "\n"]
+    line6 = ["    rerun:   ", cyan(rerun_cmd, color), "\n"]
 
     # Blank line + raw failure body
     failure_body = compact_failure(r)
@@ -188,7 +195,7 @@ defmodule TestLens.TerminalReporter do
     [line1, line2, line3, line4, line5, line6, body_section, "\n"]
   end
 
-  defp colorize_fail_icon(true), do: [red("✗")]
+  defp colorize_fail_icon(true), do: [IO.ANSI.red(), "✗", @reset]
   defp colorize_fail_icon(false), do: "✗"
 
   defp type_label(%TestLens.Result{status: :invalid}) do
@@ -232,14 +239,14 @@ defmodule TestLens.TerminalReporter do
     if slow == [] do
       ""
     else
-      header = if config.color, do: cyan("── Slowest tests ──"), else: "── Slowest tests ──"
+      header = cyan("── Slowest tests ──", config.color)
 
       lines =
         Enum.map(slow, fn r ->
           ms = format_ms(r.time_us)
           module_name = inspect(r.module)
           test_name = Atom.to_string(r.name)
-          [yellow(ms), "  ", module_name, " > ", test_name, "\n"]
+          [yellow(ms, config.color), "  ", module_name, " > ", test_name, "\n"]
         end)
 
       ["\n", header, "\n", lines]
@@ -259,26 +266,26 @@ defmodule TestLens.TerminalReporter do
   def render_next_commands(%TestLens.Config{} = config, failures, seed) do
     color = config.color
 
-    header = if color, do: bright("── Next commands ──"), else: "── Next commands ──"
+    header = bright("── Next commands ──", color)
 
     commands =
       []
       |> prepend_if(true, [
         "  $ ",
-        bright("mix test.lens -- --stale"),
-        dim_text("  # check for stale tests"),
+        bright("mix test.lens -- --stale", color),
+        dim_text("  # check for stale tests", color),
         "\n"
       ])
       |> prepend_if(failures != [], [
         "  $ ",
-        bright("mix test.lens -- --failed"),
-        dim_text("  # rerun the failing tests"),
+        bright("mix test.lens -- --failed", color),
+        dim_text("  # rerun the failing tests", color),
         "\n"
       ])
       |> prepend_if(is_integer(seed), [
         "  $ ",
-        bright("mix test.lens -- --seed #{seed}"),
-        dim_text("  # reproduce this run"),
+        bright("mix test.lens -- --seed #{seed}", color),
+        dim_text("  # reproduce this run", color),
         "\n"
       ])
 
