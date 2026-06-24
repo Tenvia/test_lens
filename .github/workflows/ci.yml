@@ -8,20 +8,16 @@ on:
 
 jobs:
   test:
-    name: test (elixir ${{ matrix.elixir }} / otp ${{ matrix.otp }})
+    # Pinned by .tool-versions (Elixir 1.19.5, Erlang/OTP 28.0).
+    # `version-type: strict` makes setup-beam use exactly what's in
+    # .tool-versions and fail loud if the toolchain can't be installed
+    # — this avoids the "mix: command not found" PATH issue we hit
+    # when passing a floating `version: "1.18"` to the action.
+    # A compat matrix (1.18/27, 1.19/28) was attempted first but
+    # proved flaky under setup-beam@v1; the spec called 1.18 compat
+    # "optional", so we ship with the pinned toolchain instead.
+    name: test (elixir 1.19.5 / otp 28.0)
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        elixir: ["1.18", "1.19"]
-        otp: ["27", "28"]
-        exclude:
-          # 1.18 needs OTP 27; 1.19 needs OTP 28
-          - elixir: "1.18"
-            otp: "28"
-          - elixir: "1.19"
-            otp: "27"
 
     steps:
       - uses: actions/checkout@v4
@@ -29,15 +25,8 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          # Note: we deliberately do NOT use `version-file: .tool-versions`
-          # here. The matrix below selects the Elixir/OTP versions, and
-          # `setup-beam@v1` errors out if both `version-file` and an
-          # explicit `version`/`otp-version` are set (unless
-          # `version-type: strict`, which would force the matrix
-          # versions to be ignored). The .tool-versions file is for
-          # local asdf users; CI is controlled by the matrix.
-          version: ${{ matrix.elixir }}
-          otp-version: ${{ matrix.otp }}
+          version-file: .tool-versions
+          version-type: strict
 
       - name: Cache deps
         uses: actions/cache@v4
@@ -45,9 +34,9 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('**/mix.lock', '**/mix.exs') }}
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock', '**/mix.exs') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-
+            ${{ runner.os }}-mix-
 
       - name: Install dependencies
         run: mix deps.get
