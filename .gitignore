@@ -1,0 +1,30 @@
+# Elixir build artifacts
+/_build/
+/cover/
+/deps/
+/doc/
+/.fetch
+erl_crash.dump
+*.ez
+*.beam
+*.tar
+*.tar.gz
+
+# Generated artifacts (regenerable from source)
+/doc/
+/tmp/
+
+# Generated reports (we don't want these in version control)
+/_build/test_lens/report.json
+/_build/test_lens/report.html
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Tooling
+.elixir_ls/
+.tool-versions
