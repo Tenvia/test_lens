@@ -382,6 +382,7 @@ defmodule TestLens.ProjectConfigTest do
 
     test "validates impact values; bad ones fall back to :none" do
       raw = [areas: %{"test/foo" => [label: "Foo", impact: :catastrophic]}]
+
       assert {:ok, %ProjectConfig{areas: %{"test/foo" => %{impact: :none}}}} =
                ProjectConfig.from_keyword(raw)
     end
