@@ -115,11 +115,16 @@ defmodule TestLens.Impact do
     end
   end
 
-  defp find_area(nil, _areas), do: nil
+  def find_area(nil, _areas), do: nil
 
-  defp find_area(file, areas) do
+  def find_area(file, areas) do
+    # ExUnit.TestModule.file is an absolute path; .test_lens.exs area
+    # keys are relative to the consumer's cwd. Relativize before
+    # comparing so the two share a common root.
+    relative = if is_binary(file), do: Path.relative_to_cwd(file), else: file
+
     Enum.find_value(areas, fn {path, area} ->
-      if String.starts_with?(file, path), do: area
+      if String.starts_with?(relative, path), do: area
     end)
   end
 
