@@ -27,4 +27,3 @@ erl_crash.dump
 
 # Tooling
 .elixir_ls/
-.tool-versions
