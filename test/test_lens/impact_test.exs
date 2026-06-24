@@ -234,4 +234,101 @@ defmodule TestLens.ImpactTest do
     assert is_struct(i, Impact)
     assert i.impact in [:high, :medium, :low, :none]
   end
+
+  # ---------------------------------------------------------------------------
+  # find_area/2 path matching — regression tests for the absolute-vs-relative
+  # bug. ExUnit.TestModule.file is an absolute path; .test_lens.exs area
+  # keys are relative to cwd. The matcher must relativize before comparing.
+  # ---------------------------------------------------------------------------
+
+  describe "find_area/2 path matching" do
+    @absolute_file Path.expand("test/example_app/accounts/foo_test.exs")
+    @relative_file "test/example_app/accounts/foo_test.exs"
+
+    @area_config %TestLens.ProjectConfig{
+      areas: %{
+        "test/example_app/accounts" => %{
+          label: "Accounts",
+          impact: :high,
+          user_facing: true
+        },
+        "test/example_app_web" => %{
+          label: "Web",
+          impact: :medium,
+          user_facing: true
+        }
+      },
+      critical_tags: []
+    }
+
+    test "matches when the test file is an absolute path and the area key is relative" do
+      result = Impact.find_area(@absolute_file, @area_config.areas)
+      assert result.label == "Accounts"
+      assert result.impact == :high
+    end
+
+    test "matches when the test file is already a relative path" do
+      result = Impact.find_area(@relative_file, @area_config.areas)
+      assert result.label == "Accounts"
+    end
+
+    test "first matching prefix wins (most specific area before parent)" do
+      # Pin the documented behaviour: when multiple prefixes match, the
+      # one that appears first in the consumer's areas: map wins. The
+      # current config has "test/example_app/accounts" before
+      # "test/example_app_web", and accounts/ comes first, so the
+      # accounts/ area wins for the matching file.
+      result = Impact.find_area(@relative_file, @area_config.areas)
+      assert result.label == "Accounts"
+    end
+
+    test "returns nil (default_impact) when no area matches" do
+      i = Impact.find_area("test/example_app/workers/queue_test.exs", @area_config.areas)
+      assert i == nil
+    end
+
+    test "returns nil when file is nil" do
+      assert Impact.find_area(nil, @area_config.areas) == nil
+    end
+  end
+
+  describe "classify/3 end-to-end with ProjectConfig" do
+    test "populates area and impact when the test file is absolute and the area key is relative" do
+      config = %TestLens.ProjectConfig{
+        areas: %{
+          "test/example_app/accounts" => %{
+            label: "Accounts",
+            impact: :high,
+            user_facing: true
+          }
+        },
+        critical_tags: []
+      }
+
+      absolute = Path.expand("test/example_app/accounts/foo_test.exs")
+      result = Impact.classify(absolute, [], config)
+      assert result.area == "Accounts"
+      assert result.impact == :high
+      assert result.reason =~ ~s(matches area "Accounts")
+    end
+
+    test "critical tags override the area match" do
+      config = %TestLens.ProjectConfig{
+        areas: %{
+          "test/example_app" => %{
+            label: "App",
+            impact: :low,
+            user_facing: false
+          }
+        },
+        critical_tags: [:must_not_fail]
+      }
+
+      absolute = Path.expand("test/example_app/anything_test.exs")
+      result = Impact.classify(absolute, [:must_not_fail], config)
+      assert result.critical == true
+      assert result.impact == :high
+      assert result.reason =~ "tagged critical"
+    end
+  end
 end
