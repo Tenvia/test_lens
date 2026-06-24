@@ -381,4 +381,94 @@ defmodule TestLens.TerminalReporterTest do
     bin = IO.iodata_to_binary(iodata)
     refute bin =~ "\e["
   end
+
+  # ---------------------------------------------------------------------------
+  # render_failures/2 wires Impact.classify/1 — the consumer's .test_lens.exs
+  # populates `impact:` and `area:`. These tests use a real on-disk
+  # .test_lens.exs because Impact.classify/1 reads it from the CWD; the
+  # terminal_reporter itself never sees the ProjectConfig.
+  # ---------------------------------------------------------------------------
+
+  describe "render_failures/2 with TestLens.Impact wiring" do
+    setup do
+      dir = Path.join(System.tmp_dir!(), "test_lens_impact_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(dir)
+      File.write!(Path.join(dir, ".test_lens.exs"), """
+      [
+        project: "TestApp",
+        areas: %{
+          "test/known/" => [label: "KnownArea", impact: :high, user_facing: true]
+        },
+        critical_tags: [:payment]
+      ]
+      """)
+
+      prev_cwd = File.cwd!()
+      File.cd!(dir)
+      on_exit(fn ->
+        File.cd!(prev_cwd)
+        File.rm_rf!(dir)
+      end)
+
+      %{dir: dir}
+    end
+
+    test "render_failures/2 populates impact from the project config (not 'unknown')" do
+      cfg = %Config{color: false}
+
+      r = build_result(
+            file: "test/known/example_test.exs",
+            state: {:failed, []},
+            status: :failed,
+            failures: [{:error, %RuntimeError{message: "boom"}, []}]
+          )
+
+      iodata = TerminalReporter.render_failures(cfg, [r])
+      bin = IO.iodata_to_binary(iodata)
+
+      refute bin =~ "impact:  unknown",
+             "regression: impact must come from TestLens.Impact.classify, not the v0.1.0 placeholder"
+
+      assert bin =~ ~r/impact:\s+high/,
+             "expected impact level :high from .test_lens.exs, got: #{bin}"
+    end
+
+    test "render_failures/2 shows the area label from the project config" do
+      cfg = %Config{color: false}
+
+      r = build_result(
+            file: "test/known/example_test.exs",
+            state: {:failed, []},
+            status: :failed,
+            failures: [{:error, %RuntimeError{message: "boom"}, []}]
+          )
+
+      iodata = TerminalReporter.render_failures(cfg, [r])
+      bin = IO.iodata_to_binary(iodata)
+
+      assert bin =~ "area:"
+      assert bin =~ "KnownArea"
+    end
+
+    test "render_failures/2 with no matching area shows impact: none and area: (no area)" do
+      cfg = %Config{color: false}
+
+      # File path doesn't match any prefix in the .test_lens.exs above.
+      r = build_result(
+            file: "test/unknown/example_test.exs",
+            state: {:failed, []},
+            status: :failed,
+            failures: [{:error, %RuntimeError{message: "boom"}, []}]
+          )
+
+      iodata = TerminalReporter.render_failures(cfg, [r])
+      bin = IO.iodata_to_binary(iodata)
+
+      assert bin =~ ~r/impact:\s+none/,
+             "expected default impact :none for unmatched path, got: #{bin}"
+
+      assert bin =~ "(no area)",
+             "expected '(no area)' placeholder for unmatched path, got: #{bin}"
+    end
+  end
 end
