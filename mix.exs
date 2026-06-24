@@ -12,7 +12,7 @@ defmodule TestLens.MixProject do
       aliases: aliases(),
       description: description(),
       package: package(),
-      source_url: "https://github.com/testlens/test_lens",
+      source_url: "https://github.com/Tenvia/test_lens",
       licenses: ["MIT"]
     ]
   end
@@ -46,7 +46,7 @@ defmodule TestLens.MixProject do
       maintainers: [],
       licenses: ["MIT"],
       links: %{
-        GitHub: "https://github.com/testlens/test_lens"
+        GitHub: "https://github.com/Tenvia/test_lens"
       }
     ]
   end
