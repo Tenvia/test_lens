@@ -1,4 +1,10 @@
 defmodule TestLens.ProjectConfig do
+  # The canonical `.test_lens.exs` example lives in
+  # `TestLens.ProjectConfig.Example.text/0` so the test suite can eval
+  # the same string the docs render. See that module for the rationale.
+
+  alias TestLens.ProjectConfig.Example
+
   @moduledoc """
   Loads and validates a `.test_lens.exs` file from the consumer's project root.
 
@@ -22,13 +28,13 @@ defmodule TestLens.ProjectConfig do
   ```elixir
   [
     project: String.t(),         # optional, informational only
-    areas: [                     # optional, default: []
+    areas: %{                    # optional, default: %{}
       String.t() => [            # path prefix (e.g. "test/example_app/accounts")
         label: String.t(),       # required
         impact: :high | :medium | :low | :none,  # default: :none
         user_facing: boolean()   # default: false
       ]
-    ],
+    },
     critical_tags: [atom()]      # optional, default: []
   ]
   ```
@@ -41,7 +47,8 @@ defmodule TestLens.ProjectConfig do
     keyword lists. A test file's path is matched against the prefixes
     using `String.starts_with?/2`. The first matching prefix wins (no
     glob expansion). Areas with invalid or missing `:label` fall back
-    to `"Unnamed"`.
+    to `"Unnamed"`. A list of `{path, [descriptor]}` tuples is also
+    accepted; the loader normalises both forms to a map.
   - `critical_tags` — a list of ExUnit tag atoms. When a test carries
     one of these tags it is marked `critical: true` regardless of
     which area (if any) its file path matches.
@@ -66,27 +73,7 @@ defmodule TestLens.ProjectConfig do
   ## Example `.test_lens.exs`
 
   ```elixir
-  [
-    project: "ExampleApp",
-    areas: [
-      "test/example_app/accounts" => [
-        label: "Accounts",
-        impact: :high,
-        user_facing: true
-      ],
-      "test/example_app_web/live" => [
-        label: "LiveView/UI",
-        impact: :high,
-        user_facing: true
-      ],
-      "test/example_app/workers" => [
-        label: "Background jobs",
-        impact: :medium,
-        user_facing: false
-      ]
-    ],
-    critical_tags: [:payment, :security, :data_integrity]
-  ]
+  #{Example.text()}
   ```
   """
 
@@ -189,6 +176,17 @@ defmodule TestLens.ProjectConfig do
   # ---------------------------------------------------------------------------
 
   defp normalize_areas(areas) when is_list(areas) do
+    for {path, area} <- areas,
+        is_binary(path) and is_list(area),
+        into: %{},
+        do: {path, normalize_area(area)}
+  end
+
+  # `for {k, v} <- map` iterates a map the same way as a list of
+  # {key, value} tuples, so the body of this clause is identical to
+  # the list clause. The schema doc says `areas` is a "map" — this
+  # clause honours the documented contract.
+  defp normalize_areas(areas) when is_map(areas) do
     for {path, area} <- areas,
         is_binary(path) and is_list(area),
         into: %{},

@@ -310,4 +310,85 @@ defmodule TestLens.ProjectConfigTest do
     assert Map.has_key?(config, :areas)
     assert Map.has_key?(config, :critical_tags)
   end
+
+  # ---------------------------------------------------------------------------
+  # moduledoc example — regression test for Bug A
+  #
+  # The moduledoc renders its example via `TestLens.ProjectConfig.Example.text/0`,
+  # so the test evals the same string the docs render. This guarantees
+  # the documented example is always loadable. If you change the example,
+  # change it there and the test continues to guard it.
+  # ---------------------------------------------------------------------------
+
+  test "the moduledoc example parses and loads" do
+    example = TestLens.ProjectConfig.Example.text()
+    assert is_binary(example), "Example.text/0 must return a binary"
+
+    {raw, _binding} = Code.eval_string(example)
+    assert is_list(raw), "evaluated example must be a keyword list"
+
+    assert {:ok, %ProjectConfig{project: "ExampleApp"}} = ProjectConfig.from_keyword(raw)
+
+    assert {:ok, %ProjectConfig{critical_tags: [:payment, :security, :data_integrity]}} =
+             ProjectConfig.from_keyword(raw)
+  end
+
+  # ---------------------------------------------------------------------------
+  # from_keyword/1 areas normalisation — regression tests for Bug B
+  # ---------------------------------------------------------------------------
+
+  describe "from_keyword/1 areas normalisation" do
+    test "accepts a list of {path, [descriptor]} tuples" do
+      raw = [
+        areas: [
+          {"test/foo", [label: "Foo", impact: :high, user_facing: true]}
+        ]
+      ]
+
+      assert {:ok, %ProjectConfig{areas: %{"test/foo" => area}}} =
+               ProjectConfig.from_keyword(raw)
+
+      assert area.label == "Foo"
+      assert area.impact == :high
+      assert area.user_facing == true
+    end
+
+    test "accepts a %{path => [descriptor]} map" do
+      raw = [
+        areas: %{
+          "test/foo" => [label: "Foo", impact: :high, user_facing: true]
+        }
+      ]
+
+      assert {:ok, %ProjectConfig{areas: %{"test/foo" => area}}} =
+               ProjectConfig.from_keyword(raw)
+
+      assert area.label == "Foo"
+      assert area.impact == :high
+      assert area.user_facing == true
+    end
+
+    test "drops entries with non-binary keys" do
+      raw = [areas: [{:not_a_string, [label: "X"]}]]
+      assert {:ok, %ProjectConfig{areas: areas}} = ProjectConfig.from_keyword(raw)
+      assert map_size(areas) == 0
+    end
+
+    test "drops entries with non-list values" do
+      raw = [areas: %{"test/foo" => "not a list"}]
+      assert {:ok, %ProjectConfig{areas: areas}} = ProjectConfig.from_keyword(raw)
+      assert map_size(areas) == 0
+    end
+
+    test "validates impact values; bad ones fall back to :none" do
+      raw = [areas: %{"test/foo" => [label: "Foo", impact: :catastrophic]}]
+
+      assert {:ok, %ProjectConfig{areas: %{"test/foo" => %{impact: :none}}}} =
+               ProjectConfig.from_keyword(raw)
+    end
+
+    test "nil areas becomes empty map" do
+      assert {:ok, %ProjectConfig{areas: %{}}} = ProjectConfig.from_keyword([])
+    end
+  end
 end
