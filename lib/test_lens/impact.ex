@@ -58,10 +58,39 @@ defmodule TestLens.Impact do
   @doc """
   Classifies a test result (convenience wrapper for classify/3).
   Accepts a `TestLens.Result.t()` and extracts its `file` and `tags`.
+
+  Resolution order for the project config:
+    1. `Application.get_env(:test_lens, :project_config)` if it is a
+       `%ProjectConfig{}` (set by `TestLens.Formatter.init/1` at the
+       consumer's project root — the cwd where `.test_lens.exs` is
+       reachable).
+    2. `ProjectConfig.load_or_default/0` (reads `.test_lens.exs` from
+       the current working directory).
+
+  The first resolution path fixes the umbrella-project bug where
+  the test process runs in the app cwd (e.g. `apps/saastle/`) but
+  `.test_lens.exs` lives at the umbrella root; without the app-env
+  fallback the test process would load an empty config.
   """
   @spec classify(TestLens.Result.t()) :: t()
   def classify(%TestLens.Result{} = r) do
-    classify(r.file, r.tags, nil)
+    config = resolve_config()
+    classify(r.file, r.tags, config)
+  end
+
+  @doc """
+  Accepts a `TestLens.Result.t()` and an explicit `TestLens.ProjectConfig`.
+
+  The caller (typically a formatter started at the consumer's project
+  root, where `.test_lens.exs` is reachable) is responsible for
+  loading the config. This is the recommended arity for use from
+  reporters because the test process's cwd may differ from the
+  config's cwd (e.g. in an umbrella project, the test runs in the
+  app dir, but `.test_lens.exs` is at the umbrella root).
+  """
+  @spec classify(TestLens.Result.t(), ProjectConfig.t()) :: t()
+  def classify(%TestLens.Result{} = r, %ProjectConfig{} = config) do
+    classify(r.file, r.tags, config)
   end
 
   @doc """
@@ -119,13 +148,43 @@ defmodule TestLens.Impact do
 
   def find_area(file, areas) do
     # ExUnit.TestModule.file is an absolute path; .test_lens.exs area
-    # keys are relative to the consumer's cwd. Relativize before
-    # comparing so the two share a common root.
-    relative = if is_binary(file), do: Path.relative_to_cwd(file), else: file
+    # keys are relative to the directory holding the config (the
+    # consumer's project root, which differs from the test-process
+    # cwd in umbrella projects). Relativize the file against that
+    # same root so the two share a common prefix basis.
+    relative = relativize_for_areas(file)
 
     Enum.find_value(areas, fn {path, area} ->
       if String.starts_with?(relative, path), do: area
     end)
+  end
+
+  # Relativize `file` against the directory of the .test_lens.exs
+  # that was loaded, when known. Falls back to `Path.relative_to_cwd/1`
+  # when no source path is recorded (e.g. configs built via
+  # `from_keyword/1` without specifying a file).
+  #
+  # Note: Path.relative_to/2's argument order is (file, base) — the
+  # second argument is the base directory. The result is the first
+  # argument's path relative to the second. Verified against Elixir 1.19.
+  defp relativize_for_areas(file) when is_binary(file) do
+    case area_config_source_dir() do
+      nil -> Path.relative_to_cwd(file)
+      "" -> Path.relative_to_cwd(file)
+      source_dir -> Path.relative_to(file, source_dir)
+    end
+  end
+
+  defp relativize_for_areas(file), do: file
+
+  # The .test_lens.exs source path is stored as a sidecar key on the
+  # project_config in the application environment. See
+  # TestLens.ProjectConfig.load/1 and the mix task that publishes it.
+  defp area_config_source_dir do
+    case Application.get_env(:test_lens, :project_config_source_dir) do
+      dir when is_binary(dir) and dir != "" -> dir
+      _ -> nil
+    end
   end
 
   defp default_impact do
@@ -161,4 +220,17 @@ defmodule TestLens.Impact do
   """
   @spec affected_tests([String.t()], [TestLens.Result.t()]) :: [TestLens.Result.t()]
   def affected_tests(_changed_files, _results), do: []
+
+  # Private: resolve a project config for classify/1. Prefers the config
+  # cached in the application environment by TestLens.Formatter (set at
+  # the consumer's project root, where `.test_lens.exs` is reachable),
+  # and falls back to loading from cwd. Without the app-env fallback,
+  # umbrella projects would load an empty config because the test
+  # process runs in the app cwd, not the umbrella root.
+  defp resolve_config do
+    case Application.get_env(:test_lens, :project_config) do
+      %TestLens.ProjectConfig{} = config -> config
+      _ -> ProjectConfig.load_or_default()
+    end
+  end
 end

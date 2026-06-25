@@ -13,6 +13,7 @@ defmodule TestLens.TerminalReporterTest do
     status = Keyword.get(opts, :status, :passed)
     failures = Keyword.get(opts, :failures, [])
     file = Keyword.get(opts, :file, "test/foo_test.exs")
+    tags = Keyword.get(opts, :tags, [])
 
     state =
       case status do
@@ -35,7 +36,7 @@ defmodule TestLens.TerminalReporterTest do
       status: status,
       time_us: time_us,
       failures: failures,
-      tags: %{},
+      tags: Map.new(tags, &{&1, true}),
       module: module,
       name: name,
       file: file,
@@ -341,6 +342,81 @@ defmodule TestLens.TerminalReporterTest do
     iodata = TerminalReporter.render_json(config(), [], %{run: 0, async: nil, load: nil}, nil)
     bin = IO.iodata_to_binary(iodata)
     assert bin =~ "seed"
+  end
+
+  # ---------------------------------------------------------------------------
+  # JSON failure impact wiring (regression for second-half of PR #3)
+  # ---------------------------------------------------------------------------
+
+  test "render_json/4 with a failed result: impact is a nested object, not the hardcoded string \"unknown\"" do
+    iodata =
+      TerminalReporter.render_json(
+        config(),
+        [error_result()],
+        %{run: 1000, async: nil, load: nil},
+        nil
+      )
+
+    bin = IO.iodata_to_binary(iodata)
+    decoded = Jason.decode!(bin)
+    [%{"impact" => impact, "module" => _module, "name" => _name}] = decoded["failures"]
+
+    # Pre-fix bug: impact was the literal string "unknown" regardless of config.
+    # Post-fix: impact is a map produced by TestLens.Impact.classify/1.
+    refute impact == "unknown",
+           "render_json/4 must not hardcode impact=\"unknown\"; " <>
+             "it should call TestLens.Impact.classify/1 and surface the result."
+
+    assert is_map(impact),
+           "impact must be a map (TestLens.Impact struct as a map), got: #{inspect(impact)}"
+
+    # The Impact struct has these fields. After stringify_keys/Map.from_struct,
+    # they appear as string keys in the JSON.
+    for key <- ~w(area impact user_facing critical reason) do
+      assert Map.has_key?(impact, key),
+             "impact map must contain key #{inspect(key)}, got: #{inspect(impact)}"
+    end
+  end
+
+  test "render_json/4 with a failed result: file path is preserved in the failure entry" do
+    iodata =
+      TerminalReporter.render_json(
+        config(),
+        [error_result()],
+        %{run: 1000, async: nil, load: nil},
+        nil
+      )
+
+    bin = IO.iodata_to_binary(iodata)
+    decoded = Jason.decode!(bin)
+    [%{"file" => file}] = decoded["failures"]
+    assert file == "test/foo_test.exs"
+  end
+
+  test "render_json/4 with a failed result and no .test_lens.exs: impact falls back to default_impact (not a hardcoded string)" do
+    # The test_lens project itself has no .test_lens.exs (it's the library,
+    # not a consumer). So Impact.classify/1 returns the default_impact
+    # struct: area: nil, impact: :none, user_facing: false, critical: false.
+    # The wiring must still surface this as a map, not the literal
+    # string "unknown".
+    iodata =
+      TerminalReporter.render_json(
+        config(),
+        [error_result()],
+        %{run: 1000, async: nil, load: nil},
+        nil
+      )
+
+    bin = IO.iodata_to_binary(iodata)
+    decoded = Jason.decode!(bin)
+    [%{"impact" => impact}] = decoded["failures"]
+
+    assert is_map(impact)
+    assert impact["area"] == nil
+    assert impact["impact"] == "none"
+    assert impact["user_facing"] == false
+    assert impact["critical"] == false
+    assert impact["reason"] == "no matching area or tag"
   end
 
   # ---------------------------------------------------------------------------

@@ -381,11 +381,24 @@ defmodule TestLens.TerminalReporter do
 
     layer = TestLens.Classifier.category_label(TestLens.Classifier.classify(f.test))
 
+    # Surface the real Impact classification (area, impact, user_facing,
+    # critical, reason) from the consumer's .test_lens.exs. The previous
+    # implementation hardcoded "impact" => "unknown" which made the JSON
+    # output useless for downstream tooling that wants to sort failures
+    # by impact or filter on critical. Mirrors the human-output branch
+    # (which was wired in the previous fix) and the failure_entry/1
+    # contract in TestLens.JSONReport.
+    impact =
+      f
+      |> TestLens.Impact.classify()
+      |> Map.from_struct()
+      |> stringify_keys()
+
     %{
       "severity" => Atom.to_string(severity),
       "kind" => Atom.to_string(kind),
       "layer" => layer,
-      "impact" => "unknown",
+      "impact" => impact,
       "module" => inspect(f.module),
       "name" => Atom.to_string(f.name),
       "file" => f.file
@@ -414,6 +427,28 @@ defmodule TestLens.TerminalReporter do
   def encode_json_value(value) do
     encode_json(value) |> IO.iodata_to_binary()
   end
+
+  # Convert a map with atom keys to a map with string keys, recursively.
+  # Mirrors TestLens.JSONReport.stringify_keys/1. Duplicated here rather
+  # than promoted to a shared module because the two implementations have
+  # different lifecycles and the public surface of this module is large
+  # already; consolidating is a separate refactor.
+  defp stringify_keys(map) when is_map(map) do
+    Map.new(map, fn {k, v} -> {to_string_key(k), stringify_value(v)} end)
+  end
+
+  defp stringify_keys(other), do: other
+
+  defp stringify_value(v) when is_map(v), do: stringify_keys(v)
+  defp stringify_value(v) when is_list(v), do: Enum.map(v, &stringify_value/1)
+
+  defp stringify_value(v) when is_atom(v) and not is_nil(v) and v != true and v != false,
+    do: Atom.to_string(v)
+
+  defp stringify_value(v), do: v
+
+  defp to_string_key(k) when is_atom(k), do: Atom.to_string(k)
+  defp to_string_key(k), do: k
 
   # Tiny JSON encoder covering only the shapes we emit (string keys, scalars,
   # nested maps, lists). No external dependency.

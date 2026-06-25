@@ -171,6 +171,87 @@ defmodule TestLens.ProjectConfig do
     {:error, "Config must be a keyword list, got: #{inspect(not_a_list)}"}
   end
 
+  @doc """
+  Like `load_or_default/1`, but walks up the directory tree from
+  the starting path looking for a `.test_lens.exs` file. This is
+  the recommended entry point for tooling that may be invoked from
+  a subdirectory of the consumer's project (e.g. a Mix task in an
+  Elixir umbrella, where the task's cwd is the app dir but the
+  config lives at the umbrella root).
+
+  Resolution order:
+    1. `<start>/.test_lens.exs` if `start` is a directory
+    2. `<start>` itself if it is a regular file (in case the caller
+       passed a path to the file directly)
+    3. Walk up: `<parent>/.test_lens.exs`, `<parent>/.test_lens.exs`, ...
+       until either a file is found or the filesystem root is reached.
+    4. On miss, return an empty `%ProjectConfig{}` (same fallback as
+       `load_or_default/1`).
+
+  The `start` argument defaults to the current working directory.
+
+  Side effect: on success, publishes the directory containing the
+  found config file to the application environment under
+  `:test_lens, :project_config_source_dir`. `TestLens.Impact.find_area/2`
+  reads this key to relativize test file paths against the same root
+  the config was loaded from, which is the only way area-key prefix
+  matches work in umbrella projects.
+  """
+  @spec load_or_walk(Path.t()) :: t()
+  def load_or_walk(start \\ File.cwd!()) do
+    case find_config_file(start) do
+      nil ->
+        Application.delete_env(:test_lens, :project_config_source_dir)
+        %__MODULE__{}
+
+      path ->
+        publish_source_dir(path)
+        load_or_default(path)
+    end
+  end
+
+  @doc """
+  Like `load/1`, but walks up the directory tree from the starting
+  path looking for a `.test_lens.exs` file. Returns `{:ok, t()}`
+  on success and `{:error, reason}` on miss.
+  """
+  @spec load_walk(Path.t()) :: {:ok, t()} | {:error, String.t()}
+  def load_walk(start \\ File.cwd!()) do
+    case find_config_file(start) do
+      nil -> {:error, "No .test_lens.exs found at #{start} or any parent directory"}
+      path -> load(path)
+    end
+  end
+
+  defp publish_source_dir(path) do
+    Application.put_env(:test_lens, :project_config_source_dir, Path.dirname(path))
+  end
+
+  defp find_config_file(start) do
+    cond do
+      File.regular?(start) ->
+        start
+
+      File.dir?(start) ->
+        candidate = Path.join(start, ".test_lens.exs")
+
+        if File.regular?(candidate) do
+          candidate
+        else
+          parent = Path.dirname(start)
+
+          if parent == start do
+            nil
+          else
+            find_config_file(parent)
+          end
+        end
+
+      true ->
+        nil
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------

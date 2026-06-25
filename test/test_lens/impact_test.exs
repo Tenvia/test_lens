@@ -1,5 +1,13 @@
 defmodule TestLens.ImpactTest do
-  use ExUnit.Case, async: true
+  # async: false — several tests below mutate the *global* Application
+  # environment (:test_lens, :project_config and :project_config_source_dir)
+  # which the production Impact.find_area/2 + classify/1 read back at
+  # runtime. With async: true those writes leak into sibling tests
+  # (e.g. "find_area/2 path matching ... absolute path") that read the
+  # same env via find_area/2, producing an intermittent BadMapError on
+  # nil. Global state ⇒ must be serial. See umbrella-cwd and
+  # application-env-fallback describe blocks below.
+  use ExUnit.Case, async: false
 
   alias TestLens.{Impact, ProjectConfig}
 
@@ -16,6 +24,82 @@ defmodule TestLens.ImpactTest do
     assert Impact.affected_tests(["lib/foo.ex"], []) == []
     assert Impact.affected_tests([], []) == []
     assert Impact.affected_tests(["lib/foo.ex", "lib/bar.ex"], []) == []
+  end
+
+  # ---------------------------------------------------------------------------
+  # classify/1 application-env fallback (umbrella-project regression)
+  # ---------------------------------------------------------------------------
+
+  describe "classify/1 application-env fallback" do
+    setup do
+      # Snapshot any pre-existing app env so other tests aren't affected.
+      prev = Application.get_env(:test_lens, :project_config)
+      on_exit(fn -> Application.put_env(:test_lens, :project_config, prev) end)
+      :ok
+    end
+
+    test "prefers the project_config published in :test_lens app env over loading from cwd" do
+      explicit = %ProjectConfig{
+        project: "FromAppEnv",
+        areas: %{
+          "test/umbrella_app" => %{
+            label: "Umbrella-specific",
+            impact: :critical,
+            user_facing: true
+          }
+        },
+        critical_tags: []
+      }
+
+      Application.put_env(:test_lens, :project_config, explicit)
+
+      # Use a real path at the expected distance from cwd so the
+      # absolute-vs-relative path fix produces the right relativized path.
+      fake_file = Path.expand("test/umbrella_app/foo_test.exs")
+
+      fake_result = %TestLens.Result{
+        test: nil,
+        status: :failed,
+        time_us: 0,
+        failures: [],
+        tags: %{},
+        module: SomeModule,
+        name: :"test foo",
+        file: fake_file,
+        line: nil
+      }
+
+      result = Impact.classify(fake_result)
+
+      assert result.area == "Umbrella-specific"
+      assert result.impact == :critical
+      assert result.reason =~ "matches area"
+    end
+
+    test "falls back to ProjectConfig.load_or_default/0 when no app env is set" do
+      Application.delete_env(:test_lens, :project_config)
+
+      # The test_lens library's own project has no .test_lens.exs, so this
+      # resolves to an empty config. The classification must still return
+      # a valid default_impact struct, not crash.
+      fake_result = %TestLens.Result{
+        test: nil,
+        status: :failed,
+        time_us: 0,
+        failures: [],
+        tags: %{},
+        module: SomeModule,
+        name: :"test foo",
+        file: "/Users/anywhere/test/example/foo_test.exs",
+        line: nil
+      }
+
+      result = Impact.classify(fake_result)
+
+      assert %Impact{} = result
+      assert result.area == nil
+      assert result.impact == :none
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -157,6 +241,71 @@ defmodule TestLens.ImpactTest do
     assert i.area == "Accounts"
     assert i.impact == :medium
     assert i.critical == false
+  end
+
+  # ---------------------------------------------------------------------------
+  # find_area/2 with umbrella-style cwd mismatch
+  # (file path uses test-process cwd; area keys use project-root cwd)
+  # ---------------------------------------------------------------------------
+
+  describe "find_area/2 with cwd mismatch between file and area keys" do
+    setup do
+      prev_source_dir = Application.get_env(:test_lens, :project_config_source_dir)
+
+      on_exit(fn ->
+        if prev_source_dir == nil do
+          Application.delete_env(:test_lens, :project_config_source_dir)
+        else
+          Application.put_env(:test_lens, :project_config_source_dir, prev_source_dir)
+        end
+      end)
+
+      :ok
+    end
+
+    test "matches when the test-process cwd differs from the area-key root (umbrella case)" do
+      # Simulate an umbrella: .test_lens.exs lives at the umbrella root, the
+      # test runs in apps/<app>/, the file path is absolute. The matcher
+      # must relativize the file against the SOURCE directory (where the
+      # .test_lens.exs was loaded from), not against the test-process cwd.
+      source_dir = "/Users/dev/projects/umbrella"
+      Application.put_env(:test_lens, :project_config_source_dir, source_dir)
+
+      file =
+        "/Users/dev/projects/umbrella/apps/saastle/test/saastle_runtime/placement_events_test.exs"
+
+      areas = %{
+        "apps/saastle/test/saastle_runtime" => %{
+          label: "Runtime / OTP layer (default)",
+          impact: :high,
+          user_facing: false
+        }
+      }
+
+      result = Impact.find_area(file, areas)
+
+      assert result != nil, "expected the umbrella-cwd mismatch case to match"
+      assert result.label == "Runtime / OTP layer (default)"
+      assert result.impact == :high
+    end
+
+    test "falls back to Path.relative_to_cwd when no source dir is published" do
+      Application.delete_env(:test_lens, :project_config_source_dir)
+
+      # Same-path case (single-app project): area keys are relative to cwd.
+      file = Path.expand("test/example_app/accounts/foo_test.exs")
+
+      areas = %{
+        "test/example_app/accounts" => %{
+          label: "Accounts",
+          impact: :high,
+          user_facing: true
+        }
+      }
+
+      result = Impact.find_area(file, areas)
+      assert result.label == "Accounts"
+    end
   end
 
   # ---------------------------------------------------------------------------

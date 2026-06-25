@@ -40,6 +40,19 @@ defmodule Mix.Tasks.Test.Lens do
     # environment. The formatter reads it on init.
     Application.put_env(:test_lens, :config, config)
 
+    # Load the consumer's ProjectConfig (.test_lens.exs) HERE, in the
+    # cwd where the mix task is invoked, and publish it to the
+    # application environment. Use load_or_walk/1 (not load_or_default/1)
+    # so the search walks up the directory tree — necessary for
+    # umbrella projects where the mix task is invoked from the umbrella
+    # root but the umbrella changes cwd to the app dir (e.g.
+    # apps/saastle/) before running tests. Without the walk, the
+    # default read would happen from the test-process cwd (apps/saastle/)
+    # where .test_lens.exs is not, and every failure would surface
+    # default_impact.
+    project_config = TestLens.ProjectConfig.load_or_walk()
+    Application.put_env(:test_lens, :project_config, project_config)
+
     formatter_flags = [
       "--formatter",
       "ExUnit.CLIFormatter",
