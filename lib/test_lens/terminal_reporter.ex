@@ -349,11 +349,11 @@ defmodule TestLens.TerminalReporter do
       [] ->
         ""
 
-      [first | _] = list ->
+      [first | _rest] ->
         threshold = first.time_us
 
         lines =
-          Enum.map(list, fn r ->
+          Enum.map(slow, fn r ->
             bar = slow_bar(r.time_us, threshold, config.color)
             ms = format_ms(r.time_us)
             module_name = inspect(r.module)
