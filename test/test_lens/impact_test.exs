@@ -1,5 +1,13 @@
 defmodule TestLens.ImpactTest do
-  use ExUnit.Case, async: true
+  # async: false — several tests below mutate the *global* Application
+  # environment (:test_lens, :project_config and :project_config_source_dir)
+  # which the production Impact.find_area/2 + classify/1 read back at
+  # runtime. With async: true those writes leak into sibling tests
+  # (e.g. "find_area/2 path matching ... absolute path") that read the
+  # same env via find_area/2, producing an intermittent BadMapError on
+  # nil. Global state ⇒ must be serial. See umbrella-cwd and
+  # application-env-fallback describe blocks below.
+  use ExUnit.Case, async: false
 
   alias TestLens.{Impact, ProjectConfig}
 
