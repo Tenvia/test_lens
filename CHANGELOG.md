@@ -5,6 +5,67 @@ All notable changes to TestLens will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-06-25
+
+### Added
+
+- **OTP runtime snapshots** — opt-in (`mix test.lens --snapshot`) capture of
+  test-time runtime context (supervision subtree, process info,
+  GenServer state hashes, telemetry events) at the moment a test fails.
+  Snapshots are written into the agent artifact; TTY and HTML reports
+  stay clean.
+- New module `TestLens.OTPSnapshot` with safe-pid guard, registered-name
+  denylist (`token`, `secret`, `password`, `key`, `credential`, `auth`),
+  bounded supervision subtree walk (depth ≤ 6, breadth ≤ 64, capture
+  timeout ≤ 100 ms).
+- New module `TestLens.TelemetryBridge` — attaches to the consumer's
+  `:telemetry` stream (supervisor, gen_server, oban, broadway prefixes)
+  with a bounded ring buffer (default 64 events).
+- Optional runtime dependency on `:telemetry ~> 1.0` (declared
+  `optional: true` so it is not pulled in unless the consumer already
+  uses it). The bridge detects its absence and silently no-ops.
+- New CLI flags `--snapshot` and `--snapshot-dir PATH`. The directory
+  flag writes per-failure NDJSON files for streaming consumers.
+- `agent artifact schema_version: "3.0"` adds:
+  - top-level `"otp_snapshots"` array (empty when `--snapshot` was not used).
+  - per-failure `"otp_context": %{"snapshot_id" => ...}` pointer.
+  - `"safety"` block extended with `otp_snapshot_safety_reasons` and
+    `otp_snapshot_excluded_pids`.
+- New docs page `docs/otp-snapshots.md` with full schema, safety
+  guarantees, worked example, and known limitations.
+- `TestLens.Result.line/1` now also reads the `:line` test tag (ExUnit
+  does not yet expose line numbers, but consumers can opt in via
+  `@tag line: 42`).
+- `TestLens.AgentReport.failure_id/1` is now public so the formatter
+  can key OTP snapshots by the same id used in the agent artifact.
+
+### Changed
+
+- `TestLens.version` bumped to `2.0.0` (will be tagged `v3.0.0` at release).
+- `TestLens.AgentReport.schema_version` bumped to `"3.0"`.
+- `TestLens.AgentReport.build/3` accepts an optional fourth argument
+  (`otp_snapshots`); `build/3` (no snapshots) is preserved for backward
+  compatibility.
+- `TestLens.AgentReport.write/4` accepts an optional fifth argument;
+  `write/4` (no snapshots) is preserved.
+- `TestLens.Formatter` now starts a `TelemetryBridge` on `:suite_started`
+  when `--snapshot` is enabled, captures OTP snapshots for failed
+  tests on `:test_finished`, drains the bridge buffer into each
+  snapshot, and detaches the bridge on `:suite_finished`.
+- `TestLens.Config` adds `snapshot: false` and `snapshot_dir: nil`
+  fields with defaults.
+
+### Notes
+
+- The `:telemetry` dep is `optional: true`. Consumers who don't already
+  use `:telemetry` will not have it pulled in by TestLens. The bridge
+  detects its absence and the snapshot feature degrades to "no telemetry
+  events captured" without raising.
+- OTP snapshots are taken from the formatter process (not the failing
+  test process). ExUnit does not yet expose the test process pid in
+  its public API; v3.1 will switch to the test process when ExUnit
+  supports it.
+
 ## [2.0.0] - 2026-06-25
 
 ### Added

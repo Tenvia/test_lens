@@ -319,6 +319,8 @@ not display formats.
 | `--html-file PATH` | Override the HTML report path |
 | `--agent` | Write the agent repair artifact (default: `_build/test_lens/agent.json`) |
 | `--agent-file PATH` | Override the agent artifact path |
+| `--snapshot` | Capture OTP runtime snapshots at failure time into the agent artifact |
+| `--snapshot-dir PATH` | Also write per-failure snapshot NDJSON files to PATH |
 | `--no-color` | Disable ANSI color (the only color we emit is the banner) |
 | `--color` | Force-enable color (default) |
 | `-j` | Alias for `--json` |
@@ -337,6 +339,21 @@ It is opt-in (`--agent`) and is intentionally separate from the TTY and HTML
 reports. Human-facing surfaces stay clean; the agent artifact lives at
 `_build/test_lens/agent.json`. See `docs/agent-artifact.md` for the full
 schema and worked example.
+
+## OTP runtime snapshots
+
+When `--snapshot` is enabled, TestLens captures test-time OTP runtime
+context at the moment a test fails: supervision subtree, process info (with
+a safety denylist applied), GenServer state hashes, and a bounded ring buffer
+of `:telemetry` events. Snapshots live in the agent artifact under the top
+level `otp_snapshots[]` array, with a small pointer on each affected
+failure's `otp_context` field.
+
+`--snapshot-dir PATH` also writes one NDJSON file per failed test to PATH,
+useful for streaming consumers that want one file per failure.
+
+The TTY and HTML reports are unchanged. See `docs/otp-snapshots.md` for the
+full schema, safety guarantees, and worked example.
 
 ## Contributing
 

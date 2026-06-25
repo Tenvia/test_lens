@@ -62,13 +62,13 @@ defmodule TestLens.AgentReportTest do
   end
 
   describe "schema" do
-    test "schema_version/0 returns 2.0" do
-      assert AgentReport.schema_version() == "2.0"
+    test "schema_version/0 returns 3.0" do
+      assert AgentReport.schema_version() == "3.0"
     end
 
-    test "build/3 emits schema_version == 2.0 at the top level" do
+    test "build/3 emits schema_version == 3.0 at the top level" do
       artifact = AgentReport.build([], %{run: 0, async: nil, load: nil}, nil)
-      assert artifact["schema_version"] == "2.0"
+      assert artifact["schema_version"] == "3.0"
     end
 
     test "build/3 with empty results has the canonical top-level keys" do
@@ -83,6 +83,7 @@ defmodule TestLens.AgentReportTest do
             "failures",
             "repair_queue",
             "commands",
+            "otp_snapshots",
             "safety"
           ] do
         assert Map.has_key?(artifact, key), "missing key: #{key}"
@@ -223,6 +224,72 @@ defmodule TestLens.AgentReportTest do
     end
   end
 
+  describe "otp_snapshots (3.0+)" do
+    test "build/3 without snapshots emits an empty otp_snapshots array" do
+      artifact = AgentReport.build([failed_result()], %{run: 0, async: nil, load: nil}, nil)
+      assert artifact["otp_snapshots"] == []
+    end
+
+    test "build/4 attaches snapshot to matching failure entry" do
+      result = failed_result()
+
+      [failure_entry] =
+        AgentReport.build([result], %{run: 0, async: nil, load: nil}, nil)["failures"]
+
+      snapshot = %{
+        "snapshot_id" => "abc123def456",
+        "captured_at" => "2026-06-25T12:00:00.000000Z",
+        "test_pid" => "#PID<0.123.0>",
+        "supervision_subtree" => [],
+        "process_info" => %{"registered_name" => "MyApp.Worker"},
+        "safety" => %{"safe_to_capture" => true},
+        "telemetry_events" => []
+      }
+
+      artifact =
+        AgentReport.build([result], %{run: 0, async: nil, load: nil}, nil, %{
+          failure_entry["id"] => snapshot
+        })
+
+      [failure_with_ctx] = artifact["failures"]
+      assert failure_with_ctx["otp_context"]["snapshot_id"] == "abc123def456"
+      assert length(artifact["otp_snapshots"]) == 1
+      [snap_in_artifact] = artifact["otp_snapshots"]
+      assert snap_in_artifact["snapshot_id"] == "abc123def456"
+    end
+
+    test "build/4 leaves unrelated failures without otp_context" do
+      r1 = failed_result(name: :"test a")
+      r2 = failed_result(name: :"test b", module: MyApp.OtherTest)
+
+      [f1_entry, _f2_entry] =
+        AgentReport.build([r1, r2], %{run: 0, async: nil, load: nil}, nil)["failures"]
+
+      snapshot = %{
+        "snapshot_id" => "only_for_f1",
+        "captured_at" => "2026-06-25T12:00:00.000000Z",
+        "test_pid" => "#PID<0.0.0>",
+        "supervision_subtree" => [],
+        "process_info" => %{},
+        "safety" => %{},
+        "telemetry_events" => []
+      }
+
+      artifact =
+        AgentReport.build([r1, r2], %{run: 0, async: nil, load: nil}, nil, %{
+          f1_entry["id"] => snapshot
+        })
+
+      failures = artifact["failures"]
+
+      [with_ctx, without_ctx] =
+        Enum.sort_by(failures, & &1["module"])
+
+      assert with_ctx["otp_context"]["snapshot_id"] == "only_for_f1"
+      refute Map.has_key?(without_ctx, "otp_context")
+    end
+  end
+
   describe "repair_queue" do
     test "is empty when there are no failures" do
       artifact = AgentReport.build([passed_result()], %{run: 0, async: nil, load: nil}, nil)
@@ -315,11 +382,11 @@ defmodule TestLens.AgentReportTest do
       assert File.exists?(path)
     end
 
-    test "writes valid JSON containing schema_version 2.0", %{dir: dir} do
+    test "writes valid JSON containing schema_version 3.0", %{dir: dir} do
       path = Path.join(dir, "agent.json")
       :ok = AgentReport.write(path, [failed_result()], %{run: 0, async: nil, load: nil}, 7)
       {:ok, content} = File.read(path)
-      assert content =~ "\"schema_version\":\"2.0\""
+      assert content =~ "\"schema_version\":\"3.0\""
       assert content =~ "\"test_lens_version\":\"2.0.0\""
     end
   end

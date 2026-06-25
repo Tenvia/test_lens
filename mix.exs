@@ -28,7 +28,8 @@ defmodule TestLens.MixProject do
 
   defp deps do
     [
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:telemetry, "~> 1.0", optional: true, runtime: false}
     ]
   end
 

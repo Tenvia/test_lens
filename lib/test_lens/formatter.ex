@@ -28,7 +28,9 @@ defmodule TestLens.Formatter do
     EventStore,
     HTMLReport,
     JSONReport,
+    OTPSnapshot,
     Result,
+    TelemetryBridge,
     TerminalReporter
   }
 
@@ -81,7 +83,15 @@ defmodule TestLens.Formatter do
        # ExUnit may fire :suite_finished multiple times. We render only
        # once, on the call that carries the :run key (which ExUnit only
        # sets on the final phase).
-       rendered: false
+       rendered: false,
+       # OTP snapshot support (3.0+): when `--snapshot` is enabled, the
+       # TelemetryBridge is started on `:suite_started` and snapshots
+       # are captured at `:test_finished` for failed tests. Snapshots
+       # are keyed by `failure_id` (matching AgentReport.failure_id/1)
+       # so the agent artifact builder can attach them.
+       bridge: nil,
+       snapshots: %{},
+       bridge_events: []
      }}
   end
 
@@ -93,6 +103,13 @@ defmodule TestLens.Formatter do
     # more than once within a single VM, and resetting would erase data
     # the live formatter has already accumulated. The consumer is
     # responsible for starting with a clean store between runs.
+    state =
+      if state.config.snapshot or state.config.snapshot_dir do
+        start_bridge(state)
+      else
+        state
+      end
+
     {:noreply, state}
   end
 
@@ -103,6 +120,20 @@ defmodule TestLens.Formatter do
   def handle_cast({:test_finished, test}, state) do
     result = Result.new(test, state.current_module)
     EventStore.put_result(result, state.event_store)
+
+    # OTP snapshot capture (3.0+): only for failed tests when the
+    # snapshot bridge is running. The snapshot is taken from the
+    # formatter's process context — ExUnit does not expose the failing
+    # test's pid through the public API, so we capture what the
+    # formatter itself can see (supervision subtree, GenServer state
+    # hashes of selected processes, telemetry events).
+    state =
+      if state.bridge != nil and result.status == :failed do
+        capture_failure_snapshot(state, result)
+      else
+        state
+      end
+
     {:noreply, state}
   end
 
@@ -148,32 +179,8 @@ defmodule TestLens.Formatter do
       {:noreply, %{state | times_us: times_us}}
     else
       results = EventStore.get_results(state.event_store)
-      IO.write(TerminalReporter.render(state.config, results, times_us, state.seed))
-
-      # When JSON is enabled (or json_file is set), write the structured JSON artifact.
-      if state.config.format == :json or state.config.json_file do
-        path = state.config.json_file || JSONReport.default_path()
-        _ = JSONReport.write(path, results, times_us, state.seed)
-      end
-
-      if state.config.html_file || state.config.format == :html do
-        path = state.config.html_file || HTMLReport.default_path()
-        _ = HTMLReport.write(path, results, times_us, state.seed)
-      end
-
-      # Agent repair artifact (2.0+): opt-in via --agent or --agent-file.
-      # The artifact is intentionally separate from human-facing reports.
-      # When written, append a single footer line to the TTY output so the
-      # human running the suite sees where to find it.
-      if state.config.agent || state.config.agent_file do
-        path = state.config.agent_file || AgentReport.default_path()
-
-        case AgentReport.write(path, results, times_us, state.seed) do
-          :ok -> IO.write(["Agent artifact: ", path, "\n"])
-          {:error, reason} -> IO.write(["Agent artifact failed: ", inspect(reason), "\n"])
-        end
-      end
-
+      state = render_artifacts(state, results, times_us)
+      state = maybe_stop_bridge(state)
       {:noreply, %{state | times_us: times_us, rendered: true}}
     end
   end
@@ -181,4 +188,144 @@ defmodule TestLens.Formatter do
   def handle_cast(:max_failures_reached, state), do: {:noreply, state}
   def handle_cast({:sigquit, _items}, state), do: {:noreply, state}
   def handle_cast(_msg, state), do: {:noreply, state}
+
+  # ---------------------------------------------------------------------------
+  # OTP snapshot helpers (3.0+)
+  # ---------------------------------------------------------------------------
+
+  defp start_bridge(state) do
+    case TelemetryBridge.start_link(name: bridge_name()) do
+      {:ok, pid} ->
+        %{state | bridge: pid}
+
+      {:error, {:already_started, _pid}} ->
+        state
+    end
+  end
+
+  defp stop_bridge(state) do
+    if state.bridge do
+      try do
+        TelemetryBridge.stop(state.bridge)
+      catch
+        :exit, _ -> :ok
+      end
+    end
+
+    state
+  end
+
+  defp bridge_name do
+    :"test-lens-telemetry-bridge.formatter.#{System.unique_integer([:positive])}"
+  end
+
+  defp capture_failure_snapshot(state, result) do
+    failure_id = AgentReport.failure_id(result)
+
+    snapshot =
+      case OTPSnapshot.capture_for_failure(result, failure_id, self()) do
+        {:error, _} -> nil
+        snap when is_map(snap) -> snap
+      end
+
+    # Pull the bridge's event buffer at the moment of failure so the
+    # snapshot carries the surrounding telemetry context. We drain
+    # BEFORE we capture so subsequent failures see a clean window.
+    bridge_events =
+      if state.bridge do
+        TelemetryBridge.events(state.bridge)
+      else
+        []
+      end
+
+    case snapshot do
+      nil ->
+        state
+
+      snap ->
+        full_snapshot =
+          Map.put(snap, "telemetry_events", bridge_events)
+
+        new_state = put_in(state, [:snapshots, failure_id], full_snapshot)
+
+        # Resize the bridge's buffer back to empty so the next failure
+        # sees a fresh window.
+        if state.bridge, do: GenServer.cast(state.bridge, :reset)
+
+        new_state
+    end
+  end
+
+  defp write_snapshot_dir(_dir, snapshots) when map_size(snapshots) == 0, do: :ok
+
+  defp write_snapshot_dir(dir, snapshots) do
+    File.mkdir_p!(dir)
+
+    Enum.each(snapshots, fn {failure_id, snapshot} ->
+      path = Path.join(dir, "#{failure_id}.ndjson")
+      encoded = JSONReport.encode(snapshot) <> "\n"
+      File.write!(path, encoded)
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Suite-finished artifact orchestration (extracted for complexity)
+  # ---------------------------------------------------------------------------
+
+  defp render_artifacts(state, results, times_us) do
+    state
+    |> write_tty(results, times_us)
+    |> maybe_write_json(results, times_us)
+    |> maybe_write_html(results, times_us)
+    |> maybe_write_agent(results, times_us)
+    |> maybe_write_snapshot_dir()
+  end
+
+  defp write_tty(state, results, times_us) do
+    IO.write(TerminalReporter.render(state.config, results, times_us, state.seed))
+    state
+  end
+
+  defp maybe_write_json(state, results, times_us) do
+    if state.config.format == :json or state.config.json_file do
+      path = state.config.json_file || JSONReport.default_path()
+      _ = JSONReport.write(path, results, times_us, state.seed)
+    end
+
+    state
+  end
+
+  defp maybe_write_html(state, results, times_us) do
+    if state.config.html_file || state.config.format == :html do
+      path = state.config.html_file || HTMLReport.default_path()
+      _ = HTMLReport.write(path, results, times_us, state.seed)
+    end
+
+    state
+  end
+
+  defp maybe_write_agent(state, results, times_us) do
+    if state.config.agent || state.config.agent_file do
+      path = state.config.agent_file || AgentReport.default_path()
+
+      case AgentReport.write(path, results, times_us, state.seed, state.snapshots) do
+        :ok -> IO.write(["Agent artifact: ", path, "\n"])
+        {:error, reason} -> IO.write(["Agent artifact failed: ", inspect(reason), "\n"])
+      end
+    end
+
+    state
+  end
+
+  defp maybe_write_snapshot_dir(state) do
+    if state.config.snapshot_dir do
+      write_snapshot_dir(state.config.snapshot_dir, state.snapshots)
+    end
+
+    state
+  end
+
+  defp maybe_stop_bridge(state) do
+    if state.bridge, do: stop_bridge(state), else: state
+  end
 end

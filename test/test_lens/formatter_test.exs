@@ -70,7 +70,12 @@ defmodule TestLens.FormatterTest do
       # writes never leak into the default store (and therefore into
       # the final `mix test.lens` report).
       event_store: Keyword.get(opts, :event_store, EventStore),
-      rendered: Keyword.get(opts, :rendered, false)
+      rendered: Keyword.get(opts, :rendered, false),
+      # v3.0+ OTP snapshot plumbing. Tests that don't care should
+      # leave these at their defaults (no bridge, empty snapshots).
+      bridge: Keyword.get(opts, :bridge, nil),
+      snapshots: Keyword.get(opts, :snapshots, %{}),
+      bridge_events: Keyword.get(opts, :bridge_events, [])
     }
   end
 

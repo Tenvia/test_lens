@@ -10,6 +10,8 @@ defmodule TestLens.Config do
             html_file: nil,
             agent: false,
             agent_file: nil,
+            snapshot: false,
+            snapshot_dir: nil,
             extras: []
 
   @type t :: %__MODULE__{
@@ -22,6 +24,8 @@ defmodule TestLens.Config do
           html_file: Path.t() | nil,
           agent: boolean(),
           agent_file: Path.t() | nil,
+          snapshot: boolean(),
+          snapshot_dir: Path.t() | nil,
           extras: keyword()
         }
 
@@ -43,6 +47,8 @@ defmodule TestLens.Config do
       |> apply_html_file_opt(opts)
       |> apply_agent_opt(opts)
       |> apply_agent_file_opt(opts)
+      |> apply_snapshot_opt(opts)
+      |> apply_snapshot_dir_opt(opts)
       |> normalize()
     end
   end
@@ -91,6 +97,21 @@ defmodule TestLens.Config do
     case Keyword.get(opts, :agent_file) do
       nil -> config
       path -> %{config | agent_file: path}
+    end
+  end
+
+  defp apply_snapshot_opt(config, opts) do
+    if Keyword.get(opts, :snapshot, false) do
+      %{config | snapshot: true}
+    else
+      config
+    end
+  end
+
+  defp apply_snapshot_dir_opt(config, opts) do
+    case Keyword.get(opts, :snapshot_dir) do
+      nil -> config
+      path -> %{config | snapshot_dir: path}
     end
   end
 

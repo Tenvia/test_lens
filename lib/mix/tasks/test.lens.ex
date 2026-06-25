@@ -13,6 +13,8 @@ defmodule Mix.Tasks.Test.Lens do
       mix test.lens --html-file tmp/test_lens/report.html
       mix test.lens --agent               # write the agent repair artifact
       mix test.lens --agent-file PATH     # override the agent artifact path
+      mix test.lens --snapshot            # capture OTP snapshots at failure time
+      mix test.lens --snapshot-dir PATH   # directory for per-test snapshot NDJSON
 
   ## Agent repair artifact (2.0+)
 
@@ -22,6 +24,13 @@ defmodule Mix.Tasks.Test.Lens do
   and HTML reports: the human-facing surfaces stay clean, while the agent
   artifact carries fingerprints, stacktrace normalization, ranked repair
   targets, and exact verification commands.
+
+  ## OTP runtime snapshots (3.0+)
+
+  `mix test.lens --snapshot` captures test-time OTP runtime context
+  (supervision tree, mailbox depth, link/monitor graph, telemetry
+  rollups, GenServer state hashes) at the moment a test fails. Snapshot
+  data lives in the agent artifact; TTY and HTML reports are unchanged.
   """
 
   @switches [
@@ -31,6 +40,8 @@ defmodule Mix.Tasks.Test.Lens do
     html_file: :string,
     agent: :boolean,
     agent_file: :string,
+    snapshot: :boolean,
+    snapshot_dir: :string,
     color: :boolean,
     no_color: :boolean
   ]

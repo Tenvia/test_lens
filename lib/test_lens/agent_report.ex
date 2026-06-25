@@ -15,6 +15,9 @@ defmodule TestLens.AgentReport do
     * Ranked `repair_queue` items with first-checks and exact rerun
       commands.
     * Hedged root-cause hypotheses sourced from the classifier.
+    * **(3.0+)** OTP runtime snapshots when `--snapshot` is enabled:
+      supervision subtree, process info, telemetry event buffer, and
+      safety metadata. See `docs/otp-snapshots.md`.
 
   ## What is NOT included
 
@@ -46,7 +49,7 @@ defmodule TestLens.AgentReport do
   alias TestLens.{Classifier, Fingerprint, Impact, JSONReport, ProjectConfig, Result, Stacktrace}
 
   @default_path "_build/test_lens/agent.json"
-  @schema_version "2.0"
+  @schema_version "3.0"
 
   @doc "Returns the default artifact path."
   @spec default_path() :: String.t()
@@ -60,10 +63,24 @@ defmodule TestLens.AgentReport do
   Build the agent repair artifact as an Elixir map. Pure function; no I/O.
   """
   @spec build([Result.t()], map(), integer() | :random | nil) :: map()
-  def build(results, times_us, seed) do
+  def build(results, times_us, seed), do: build(results, times_us, seed, nil)
+
+  @doc """
+  Build the agent repair artifact with optional OTP snapshots (3.0+).
+
+  `otp_snapshots` is a map of `%{failure_id => snapshot_map}`. Each
+  snapshot is the shape returned by `TestLens.OTPSnapshot.capture_for_failure/3`
+  with an additional `"telemetry_events"` key carrying the bridge's
+  event buffer at the moment of failure. When `otp_snapshots` is `nil`
+  or empty, the artifact's `otp_snapshots` array is empty and
+  `failures[]` entries do NOT carry an `otp_context` field.
+  """
+  @spec build([Result.t()], map(), integer() | :random | nil, map() | nil) :: map()
+  def build(results, times_us, seed, otp_snapshots) do
     failed = Enum.filter(results, &Result.failed?/1)
     failures = Enum.map(failed, &failure_entry/1)
     fingerprint_groups = group_by_fingerprint(failures)
+    snapshots = otp_snapshots || %{}
 
     %{
       "schema_version" => @schema_version,
@@ -71,11 +88,31 @@ defmodule TestLens.AgentReport do
       "project" => ProjectConfig.load_or_default().project,
       "run" => run_info(times_us, seed),
       "totals" => totals(results),
-      "failures" => failures,
+      "failures" => attach_otp_context(failures, snapshots),
       "repair_queue" => repair_queue(fingerprint_groups, failures),
       "commands" => commands(seed, failed != []),
+      "otp_snapshots" => otp_snapshots_list(snapshots),
       "safety" => safety_block()
     }
+  end
+
+  # When OTP snapshots are present, attach a small pointer onto each
+  # failure entry so consumers don't need to walk the top-level
+  # `otp_snapshots` array to find context for a specific failure. The
+  # full snapshot stays in `otp_snapshots[]` for human review.
+  defp attach_otp_context(failures, snapshots) do
+    Enum.map(failures, fn failure ->
+      case Map.get(snapshots, failure["id"]) do
+        nil -> failure
+        snap -> Map.put(failure, "otp_context", %{"snapshot_id" => snap["snapshot_id"]})
+      end
+    end)
+  end
+
+  defp otp_snapshots_list(snapshots) do
+    snapshots
+    |> Enum.sort_by(fn {_id, snap} -> snap["captured_at"] end)
+    |> Enum.map(fn {_id, snap} -> snap end)
   end
 
   @doc """
@@ -93,7 +130,16 @@ defmodule TestLens.AgentReport do
   @spec write(Path.t(), [Result.t()], map(), integer() | :random | nil) ::
           :ok | {:error, term()}
   def write(path, results, times_us, seed) do
-    payload = encode(build(results, times_us, seed))
+    write(path, results, times_us, seed, nil)
+  end
+
+  @doc """
+  Build and write the agent artifact with optional OTP snapshots (3.0+).
+  """
+  @spec write(Path.t(), [Result.t()], map(), integer() | :random | nil, map() | nil) ::
+          :ok | {:error, term()}
+  def write(path, results, times_us, seed, otp_snapshots) do
+    payload = encode(build(results, times_us, seed, otp_snapshots))
 
     try do
       path |> Path.dirname() |> File.mkdir_p!()
@@ -426,7 +472,13 @@ defmodule TestLens.AgentReport do
   # Shared helpers
   # ---------------------------------------------------------------------------
 
-  defp failure_id(%Result{} = r) do
+  @doc """
+  Returns the 12-hex-char stable identifier for a failure entry.
+  Shared by the Formatter (which keys snapshot captures by failure id)
+  and the AgentReport (which keys failure entries by the same id).
+  """
+  @spec failure_id(Result.t()) :: String.t()
+  def failure_id(%Result{} = r) do
     raw = "#{inspect(r.module)}.#{r.name}.#{r.file}"
     :crypto.hash(:sha256, raw) |> Base.encode16(case: :lower) |> binary_part(0, 12)
   end
