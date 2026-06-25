@@ -37,6 +37,14 @@ defmodule TestLens.Formatter do
         _ -> Config.from_option_parser(opts)
       end
 
+    # The ProjectConfig (consumer's .test_lens.exs) is published to the
+    # application environment by the Mix task at the consumer's project
+    # root. We do NOT reload it here: the formatter's cwd (the test
+    # process cwd, e.g. apps/<app>/ in an umbrella) is not the cwd where
+    # .test_lens.exs lives. Impact.classify/1 falls back to loading
+    # from cwd if the app env is unset, so the contract still holds for
+    # callers that start the formatter outside the mix task.
+
     seed = Keyword.get(opts, :seed)
 
     # Resolve the EventStore server once, at startup. Default is the
