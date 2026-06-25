@@ -1,45 +1,49 @@
-== TestLens ==
-Improved ExUnit output
+╭─ TestLens ───────────────────────────────────╮
+│ Improved ExUnit output                       │
+╰──────────────────────────────────────────────╯
 
 ........................................................
 
-── Critical (1) ──
+  ✗ 42 passed, 2 failed, 3 skipped, 47 total in 892.3ms (seed: 54321)
+  ██████████████████████░░
 
-✗ ExampleAppWeb.UserAuthTest > test login with valid credentials
-    file:    test/example_app_web/user_auth_test.exs
-    type:    exit
-    layer:   Contract / function boundary
-    impact:  unknown
-    rerun:   mix test.lens -- --failed
+━━━ Critical (1) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ⚑ ExampleAppWeb.UserAuthTest > test login with valid credentials
+    type:     process exit
+    layer:    Contract / function boundary
+    impact:   high
+    area:     Runtime / OTP layer (default)
+    file:     test/example_app_web/user_auth_test.exs
+    rerun:    mix test.lens -- --failed
 
     ** (EXIT) process exited with reason: timeout: 5000ms
 
-── Other (1) ──
+━━━ Other (1) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✗ ExampleApp.AccountsTest > test create user with duplicate email
-    file:    test/example_app/accounts_test.exs
-    type:    assertion error
-    layer:   Ecto / data layer
-    impact:  unknown
-    rerun:   mix test.lens -- --failed
+  ✗ ExampleApp.AccountsTest > test create user with duplicate email
+    type:     assertion error
+    layer:    Ecto / data layer
+    impact:   medium
+    area:     Accounts
+    file:     test/example_app/accounts_test.exs
+    rerun:    mix test.lens -- --failed
 
     Assertion with == failed
     code:  assert user.email == "taken@example.com"
     left:  "new@example.com"
     right: "taken@example.com"
 
-── Slowest tests ──
+━━━ Slowest tests ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  145.2ms  ExampleAppWeb.PageControllerTest > test renders 1000 widgets
-   89.3ms  ExampleApp.AccountsTest > test create user with valid attrs
-   67.8ms  ExampleAppWeb.UserAuthTest > test login with valid credentials
-   45.1ms  ExampleApp.AccountsTest > test update user
-   23.4ms  ExampleApp.AccountsTest > test get user by id
+█████    145.2ms  ExampleAppWeb.PageControllerTest > test renders 1000 widgets
+███░░     89.3ms  ExampleApp.AccountsTest > test create user with valid attrs
+██░░░     67.8ms  ExampleAppWeb.UserAuthTest > test login with valid credentials
+██░░░     45.1ms  ExampleApp.AccountsTest > test update user
+█░░░░     23.4ms  ExampleApp.AccountsTest > test get user by id
 
-── Next commands ──
+━━━ Next ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  $ mix test.lens -- --failed          # rerun the failing tests
-  $ mix test.lens -- --stale          # check for stale tests
-  $ mix test.lens -- --seed 54321     # reproduce this run
-
-45 passed, 2 failed, 0 skipped, 47 total in 892.3ms (seed: 54321)
+  $ mix test.lens -- --failed  # rerun the failing tests
+  $ mix test.lens -- --stale  # check for stale tests
+  $ mix test.lens -- --seed 54321  # reproduce this run

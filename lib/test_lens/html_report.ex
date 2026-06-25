@@ -159,13 +159,23 @@ defmodule TestLens.HTMLReport do
       margin: 0 auto;
       padding: 2rem 1.5rem;
       color: #1a1a1a;
-      background: #fafafa;
+      background:
+        radial-gradient(circle at top left, rgba(10, 125, 44, 0.10), transparent 28rem),
+        radial-gradient(circle at top right, rgba(196, 49, 75, 0.10), transparent 24rem),
+        #fafafa;
       line-height: 1.5;
     }
     @media (prefers-color-scheme: dark) {
-      body { color: #e6e6e6; background: #161616; }
+      body {
+        color: #e6e6e6;
+        background:
+          radial-gradient(circle at top left, rgba(49, 196, 105, 0.14), transparent 28rem),
+          radial-gradient(circle at top right, rgba(255, 92, 124, 0.13), transparent 24rem),
+          #161616;
+      }
       pre, code { background: #1f1f1f; }
       .card { background: #1f1f1f; }
+      .panel, .hero { background: rgba(31, 31, 31, 0.92); }
       th { background: #262626; }
     }
     h1, h2, h3 { color: inherit; }
@@ -212,6 +222,74 @@ defmodule TestLens.HTMLReport do
     a:hover { text-decoration: underline; }
     footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d0d0d0;
              color: #6a6a6a; font-size: 0.8rem; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 1.4rem 1.5rem;
+      border: 1px solid #d0d0d0;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-top: 6px solid #6a6a6a;
+      pointer-events: none;
+    }
+    .hero-pass::before { border-top-color: #0a7d2c; }
+    .hero-fail::before { border-top-color: #c4314b; }
+    .hero-skip::before { border-top-color: #b77900; }
+    .eyebrow { margin: 0 0 0.2rem; color: #6a6a6a; font-size: 0.8rem;
+               letter-spacing: 0.12em; text-transform: uppercase; }
+    .hero h1 { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;
+               font-size: clamp(2rem, 4vw, 3rem); }
+    .hero-icon { display: inline-grid; place-items: center; width: 2.1rem; height: 2.1rem;
+                 border-radius: 999px; color: white; background: #6a6a6a; font-size: 1.35rem; }
+    .hero-pass .hero-icon { background: #0a7d2c; }
+    .hero-fail .hero-icon { background: #c4314b; }
+    .hero-skip .hero-icon { background: #b77900; }
+    .hero-meta { color: #6a6a6a; margin: 0.25rem 0; }
+    .hero-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+                  gap: 0.5rem; margin: 1rem 0 0.75rem; }
+    .hero-stat { border: 1px solid #d0d0d0; border-radius: 12px; padding: 0.6rem 0.75rem;
+                 background: rgba(255, 255, 255, 0.7); }
+    .hero-stat span { display: block; font-size: 1.55rem; font-weight: 700; line-height: 1; }
+    .hero-stat small { color: #6a6a6a; text-transform: uppercase; letter-spacing: 0.08em; }
+    .hero-stat.passed span { color: #0a7d2c; }
+    .hero-stat.failed span { color: #c4314b; }
+    .hero-stat.skipped span { color: #806000; }
+    .progress-meter { display: flex; overflow: hidden; height: 0.8rem; border-radius: 999px;
+                      background: #e6e6e6; border: 1px solid #d0d0d0; }
+    .progress-pass { background: #0a7d2c; }
+    .progress-fail { background: #c4314b; }
+    .progress-rest, .progress-empty { background: #c8c8c8; }
+    .panel {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid #d0d0d0;
+      border-radius: 16px;
+      padding: 1rem 1.1rem;
+      margin-top: 1rem;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.04);
+    }
+    .panel h2 { margin-top: 0; }
+    .critical-panel { border-color: rgba(196, 49, 75, 0.45); }
+    .command-panel code { font-weight: 700; }
+    .failure-card { border-left: 5px solid #6a6a6a; }
+    .failure-card.severity-critical { border-left-color: #c4314b; }
+    .failure-card.severity-other { border-left-color: #b77900; }
+    .failure-detail { border-left: 4px solid #d0d0d0; }
+    @media (prefers-color-scheme: dark) {
+      .hero, .panel, .stat, .hero-stat, .card, details {
+        background: rgba(31, 31, 31, 0.92);
+        border-color: #3a3a3a;
+      }
+      .progress-meter { background: #2a2a2a; border-color: #3a3a3a; }
+      .progress-rest, .progress-empty { background: #505050; }
+      .critical-panel { border-color: rgba(255, 92, 124, 0.45); }
+      .failure-detail { border-left-color: #3a3a3a; }
+    }
     @media print {
       body { background: white; max-width: none; padding: 0.5rem; }
       .card, details, .stat, table { box-shadow: none; }
@@ -230,7 +308,9 @@ defmodule TestLens.HTMLReport do
     project_str = project || "TestLens"
     passed = Enum.count(results, &Result.passed?/1)
     failed = Enum.count(results, &Result.failed?/1)
+    skipped = Enum.count(results, &Result.skipped?/1)
     total = length(results)
+    outcome = outcome_class(failed, skipped, total)
 
     seed_str =
       case seed do
@@ -242,20 +322,21 @@ defmodule TestLens.HTMLReport do
     time_str = format_times(times_us)
 
     [
-      "<header>\n",
-      "  <h1>TestLens report</h1>\n",
-      "  <p class=\"meta\">" <>
+      "<header class=\"hero hero-" <> outcome <> "\">\n",
+      "  <p class=\"eyebrow\">" <> escape_html(project_str) <> "</p>\n",
+      "  <h1><span class=\"hero-icon\">" <>
+        outcome_icon(outcome) <> "</span> TestLens report</h1>\n",
+      "  <p class=\"hero-meta\">" <>
         escape_html(project_str) <>
         " · " <> escape_html(timestamp) <> " · " <> escape_html(seed_str) <> "</p>\n",
-      "  <p class=\"meta\">Run time: " <> escape_html(time_str) <> "</p>\n",
-      "  <p class=\"meta\">" <>
-        Integer.to_string(passed) <> " of " <> Integer.to_string(total) <> " tests passed",
-      if failed > 0 do
-        " · <span class=\"failed\">" <> Integer.to_string(failed) <> " failed</span>"
-      else
-        ""
-      end,
-      "</p>\n",
+      "  <div class=\"hero-stats\">\n",
+      hero_stat(passed, "passed", "passed"),
+      hero_stat(failed, "failed", "failed"),
+      hero_stat(skipped, "skipped", "skipped"),
+      hero_stat(total, "total", "muted"),
+      "  </div>\n",
+      "  <p class=\"hero-meta\">Run time: " <> escape_html(time_str) <> "</p>\n",
+      progress_bar(passed, failed, total),
       "</header>\n"
     ]
   end
@@ -284,7 +365,7 @@ defmodule TestLens.HTMLReport do
     end
 
     [
-      "<section id=\"summary\">\n",
+      "<section id=\"summary\" class=\"panel summary-panel\">\n",
       "  <h2>Summary</h2>\n",
       "  <div class=\"grid\">\n",
       stat.(counts.tests, "tests", ""),
@@ -316,7 +397,7 @@ defmodule TestLens.HTMLReport do
       ""
     else
       [
-        "<section id=\"critical-failures\">\n",
+        "<section id=\"critical-failures\" class=\"panel critical-panel\">\n",
         "  <h2>Critical failures (#{length(critical)})</h2>\n",
         Enum.map(critical, &failure_card(&1, "critical")),
         "</section>\n"
@@ -334,7 +415,7 @@ defmodule TestLens.HTMLReport do
       |> Enum.sort_by(fn {_area, list} -> -length(list) end)
 
     [
-      "<section id=\"failures-by-area\">\n",
+      "<section id=\"failures-by-area\" class=\"panel\">\n",
       "  <h2>Failures by area</h2>\n",
       failure_grouping_table(by_area),
       "</section>\n"
@@ -358,7 +439,7 @@ defmodule TestLens.HTMLReport do
       |> Enum.sort_by(fn {_type, count} -> -count end)
 
     [
-      "<section id=\"failures-by-type\">\n",
+      "<section id=\"failures-by-type\" class=\"panel\">\n",
       "  <h2>Failures by type</h2>\n",
       type_table(by_type),
       "</section>\n"
@@ -376,7 +457,7 @@ defmodule TestLens.HTMLReport do
       ""
     else
       [
-        "<section id=\"slow-tests\">\n",
+        "<section id=\"slow-tests\" class=\"panel\">\n",
         "  <h2>Slow tests (top 5)</h2>\n",
         "  <table>\n",
         "    <thead><tr><th>Time</th><th>Module</th><th>Test</th><th>File</th></tr></thead>\n",
@@ -405,7 +486,7 @@ defmodule TestLens.HTMLReport do
       ""
     else
       [
-        "<section id=\"suggested-reruns\">\n",
+        "<section id=\"suggested-reruns\" class=\"panel command-panel\">\n",
         "  <h2>Suggested reruns</h2>\n",
         "  <ul>\n",
         Enum.map(cmds, fn {command, comment} ->
@@ -429,7 +510,7 @@ defmodule TestLens.HTMLReport do
 
   defp raw_failure_details_section(failures) do
     [
-      "<section id=\"raw-failure-details\">\n",
+      "<section id=\"raw-failure-details\" class=\"panel\">\n",
       "  <h2>Raw failure details (#{length(failures)})</h2>\n",
       "  <p class=\"meta\">Open each entry for the full classification, impact, and raw failure body.</p>\n",
       Enum.map(failures, &raw_failure_details/1),
@@ -445,7 +526,7 @@ defmodule TestLens.HTMLReport do
     sev_class = if sev == "critical", do: "critical", else: "other"
 
     [
-      "<details>\n",
+      "<details class=\"failure-detail\">\n",
       "  <summary>",
       escape_html(inspect(r.module)),
       " · " <> escape_html(Atom.to_string(r.name)),
@@ -517,7 +598,7 @@ defmodule TestLens.HTMLReport do
     type_str = Atom.to_string(classification.type)
 
     [
-      "  <div class=\"card\">\n",
+      "  <div class=\"card failure-card severity-" <> severity_class <> "\">\n",
       "    <p><strong>" <> escape_html(inspect(r.module)) <> "</strong>\n",
       "      <span class=\"muted\"> · </span>\n",
       escape_html(Atom.to_string(r.name)),
@@ -610,6 +691,46 @@ defmodule TestLens.HTMLReport do
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
+
+  defp outcome_class(failed, _skipped, _total) when failed > 0, do: "fail"
+  defp outcome_class(0, skipped, _total) when skipped > 0, do: "skip"
+  defp outcome_class(0, 0, 0), do: "neutral"
+  defp outcome_class(0, 0, _total), do: "pass"
+
+  defp outcome_icon("fail"), do: "✗"
+  defp outcome_icon("skip"), do: "»"
+  defp outcome_icon("pass"), do: "✓"
+  defp outcome_icon(_), do: "·"
+
+  defp hero_stat(num, label, klass) do
+    [
+      "    <div class=\"hero-stat ",
+      escape_html(klass),
+      "\"><span>",
+      Integer.to_string(num),
+      "</span><small>",
+      escape_html(label),
+      "</small></div>\n"
+    ]
+  end
+
+  defp progress_bar(_passed, _failed, 0) do
+    "  <div class=\"progress-meter\" aria-label=\"No tests recorded\"><span class=\"progress-empty\" style=\"width: 100%\"></span></div>\n"
+  end
+
+  defp progress_bar(passed, failed, total) do
+    passed_pct = Float.round(passed / total * 100, 2)
+    failed_pct = Float.round(failed / total * 100, 2)
+    rest_pct = max(Float.round(100 - passed_pct - failed_pct, 2), 0)
+
+    [
+      "  <div class=\"progress-meter\" aria-label=\"Test result ratio\">",
+      "<span class=\"progress-pass\" style=\"width: #{passed_pct}%\"></span>",
+      "<span class=\"progress-fail\" style=\"width: #{failed_pct}%\"></span>",
+      "<span class=\"progress-rest\" style=\"width: #{rest_pct}%\"></span>",
+      "</div>\n"
+    ]
+  end
 
   defp to_failure_tuple(%Result{failures: [first | _]} = _r) when is_tuple(first) do
     case first do
