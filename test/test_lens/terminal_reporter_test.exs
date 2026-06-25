@@ -1,5 +1,10 @@
 defmodule TestLens.TerminalReporterTest do
-  use ExUnit.Case, async: true
+  # async: false — the Impact wiring tests below temporarily change the
+  # VM-wide cwd with File.cd!/1 so TestLens.Impact.classify/1 can load a real
+  # .test_lens.exs. cwd is global process state, not test-process-local; with
+  # async: true this can race the parallel test loader/compiler and surface as
+  # {:error, :enoent} while another test file is being required on CI.
+  use ExUnit.Case, async: false
 
   alias TestLens.{Config, Result, TerminalReporter}
 
