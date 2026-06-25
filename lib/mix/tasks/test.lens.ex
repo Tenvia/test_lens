@@ -11,6 +11,17 @@ defmodule Mix.Tasks.Test.Lens do
       mix test.lens --json-file tmp/test_lens/report.json -- --failed
       mix test.lens --html                # write HTML report
       mix test.lens --html-file tmp/test_lens/report.html
+      mix test.lens --agent               # write the agent repair artifact
+      mix test.lens --agent-file PATH     # override the agent artifact path
+
+  ## Agent repair artifact (2.0+)
+
+  `mix test.lens --agent` writes `_build/test_lens/agent.json`, a
+  machine-first JSON document optimized for AI coding agents that need to
+  triage failing Elixir tests. It is intentionally separate from the TTY
+  and HTML reports: the human-facing surfaces stay clean, while the agent
+  artifact carries fingerprints, stacktrace normalization, ranked repair
+  targets, and exact verification commands.
   """
 
   @switches [
@@ -18,10 +29,10 @@ defmodule Mix.Tasks.Test.Lens do
     json_file: :string,
     html: :boolean,
     html_file: :string,
+    agent: :boolean,
+    agent_file: :string,
     color: :boolean,
-    no_color: :boolean,
-    impact: :boolean,
-    rerun: :boolean
+    no_color: :boolean
   ]
 
   @aliases [j: :json]

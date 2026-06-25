@@ -8,9 +8,12 @@ defmodule TestLens.ConfigTest do
     assert c.format == :tty
     assert c.color == true
     assert c.json == false
+    assert c.html == false
+    assert c.json_file == nil
+    assert c.html_file == nil
+    assert c.agent == false
+    assert c.agent_file == nil
     assert c.output == :stdout
-    assert c.impact == false
-    assert c.rerun == false
     assert c.extras == []
   end
 
@@ -66,5 +69,22 @@ defmodule TestLens.ConfigTest do
   test "from_option_parser/1 without html_file defaults to nil" do
     c = Config.from_option_parser([])
     assert c.html_file == nil
+  end
+
+  test "from_option_parser/1 with agent:true sets the agent flag" do
+    c = Config.from_option_parser(agent: true)
+    assert c.agent == true
+    # agent never overrides format
+    assert c.format == :tty
+  end
+
+  test "from_option_parser/1 with agent_file sets the agent_file field" do
+    c = Config.from_option_parser(agent_file: "tmp/x.agent.json")
+    assert c.agent_file == "tmp/x.agent.json"
+  end
+
+  test "from_option_parser/1 without agent_file defaults to nil" do
+    c = Config.from_option_parser([])
+    assert c.agent_file == nil
   end
 end

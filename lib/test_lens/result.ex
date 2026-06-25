@@ -71,4 +71,15 @@ defmodule TestLens.Result do
   @doc "True if the test was skipped or excluded."
   @spec skipped?(t()) :: boolean()
   def skipped?(%__MODULE__{status: status}), do: status in [:skipped, :excluded]
+
+  @doc """
+  Returns the test's line number, preferring an explicit `:line` tag,
+  then the `Result.line` field, then `nil`. ExUnit does not expose line
+  numbers in its public API today; consumers may opt in by tagging tests
+  with `@tag line: 42` or by populating `:line` on the Result struct.
+  """
+  @spec line(t()) :: non_neg_integer() | nil
+  def line(%__MODULE__{line: line}) when is_integer(line), do: line
+  def line(%__MODULE__{tags: %{line: line}}) when is_integer(line), do: line
+  def line(_), do: nil
 end

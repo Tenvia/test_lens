@@ -1,14 +1,17 @@
 # TestLens
 
-> Improved ExUnit output and tooling for Elixir, Phoenix, and OTP codebases.
+> Better ExUnit output and tooling for Elixir, Phoenix, and OTP codebases.
+> Drop-in formatter, stable JSON artifact, self-contained HTML report,
+> and a separate agent repair artifact for AI coding assistants.
 
 ## What TestLens is
 
-TestLens is a formatter + reporter for ExUnit. It wraps `mix test` with a
+TestLens is a **formatter + reporter** for ExUnit. It wraps `mix test` with a
 second formatter that normalises per-test events, enriches them with failure
 classifications and impact assessments, and renders a human-readable summary
-to the terminal. It also emits structured JSON and HTML artifacts for CI and
-agent consumption.
+to the terminal. It also emits a **stable JSON artifact**, a **self-contained
+HTML report**, and (since 2.0) a separate **agent repair artifact** for AI
+coding agents.
 
 TestLens is not a new test framework. It does not replace ExUnit, nor does
 it run the tests differently. It sits alongside the existing `ExUnit.CLIFormatter`
@@ -30,40 +33,34 @@ so you keep the familiar dot-progression and the trailing summary line.
 ## How TestLens differs from
 
 ### Watch tools (`mix test --watch`, `file_system`, `mix_test_watch`)
-
 TestLens only runs the tests — it does not watch the filesystem for changes.
 Pair them: run `mix test.lens -- --stale` from a watch task to get TestLens
 output on every save.
 
 ### JUnit XML formatters (`junit_formatter`, `mix junit`)
-
 JUnit XML is for CI dashboards (CircleCI, GitHub Actions test reporting).
 TestLens is for the developer's terminal and the agent reviewing a PR. They are
 complementary; use both — `mix test.lens --json` for the artifact, and configure
 your CI to also emit JUnit XML.
 
 ### Phoenix feature testing libraries (`wallaby`, `waller`, `phoenix_test`)
-
 TestLens does not drive a browser or simulate a user session. It improves the
 output of the tests you already have. If you use wallaby, TestLens will
 classify wallaby session errors the same way it classifies any other ExUnit failure.
 
 ## Installation
 
-> **Status:** v0.1.0 alpha. APIs may change.
+> **Status:** `2.0.0` — stable. JSON schema is `1.0`, agent artifact schema is `2.0`.
 
-For v0.1.0, add as a path dependency:
+Add to your project's `mix.exs`:
 
 ```elixir
-# mix.exs
 defp deps do
   [
-    {:test_lens, path: "../test_lens", only: :test, runtime: false}
+    {:test_lens, "~> 2.0"}
   ]
 end
 ```
-
-Once published to Hex this becomes `{:test_lens, "~> 0.1"}`.
 
 Then fetch and compile:
 
@@ -104,8 +101,8 @@ Combine TestLens flags with `mix test` flags:
 # JSON output for piping into a dashboard or CI artifact
 mix test.lens --json -- --failed
 
-# Pair with --watch for a tight inner loop (where supported)
-mix test.lens -- --stale
+# HTML report attached to a PR
+mix test.lens --html -- --failed
 ```
 
 ## Project config (`.test_lens.exs`)
@@ -187,7 +184,7 @@ When you call `TestLens.Impact.classify/3` (or leave the config argument as
   impact: :high,                   # :high | :medium | :low | :none
   user_facing: true,               # boolean
   critical: true,                  # true if critical tag matched OR (impact == :high AND user_facing)
-  reason: "matches area \"Accounts\"" | "tagged critical: payment, security" | "no matching area or tag"
+  reason: "matches area \"Accounts\"" | "tagged critical: ..." | "no matching area or tag"
 }
 ```
 
@@ -216,15 +213,19 @@ Because the config file is just Elixir, you can read it from your own code:
 # Use config.areas and config.critical_tags in your own impact analysis
 ```
 
-For v0.2.0, the `--impact` flag will use `TestLens.Impact.changed_files_since/1`
-and `TestLens.Impact.affected_tests/2` to run only tests likely affected by
-changed files.
-
 ## Reports (JSON, HTML)
 
 TestLens emits two structured report formats. Both contain the same normalised
 data: counts, classifications, impact assessments, slow tests, and suggested reruns.
 They differ only in format — choose based on who or what is consuming the output.
+
+### Stable schema (`schema_version`)
+
+Every JSON artifact carries a top-level `"schema_version": "1.0"` field.
+TestLens `1.x` keeps the schema additive: new fields may appear, existing
+fields do not change shape. Consumers should branch on `schema_version` and
+ignore unknown fields. The full schema is documented in
+`TestLens.JSONReport`'s moduledoc.
 
 ### JSON artifact
 
@@ -236,9 +237,7 @@ mix test.lens --json-file PATH          # write artifact to PATH
 mix test.lens --json -- --failed       # rerun failures, write artifact
 ```
 
-The JSON schema is stable: field names will not change without a major version
-bump. New fields may be added in minor versions. Consumers should ignore unknown
-fields.
+The JSON schema is stable within `schema_version "1.0"`.
 
 Example failure entry shape:
 
@@ -269,7 +268,7 @@ JavaScript, no web fonts.
 
 ```sh
 mix test.lens --html                    # write to _build/test_lens/report.html
-mix test.lens --html-file PATH        # write to PATH
+mix test.lens --html-file PATH          # write to PATH
 ```
 
 **Sections (in order):** Summary, Critical failures, Failures by area,
@@ -318,13 +317,26 @@ not display formats.
 | `--json-file PATH` | Override the JSON artifact path (default: `_build/test_lens/report.json`) |
 | `--html` | Write the HTML report (default: `_build/test_lens/report.html`) |
 | `--html-file PATH` | Override the HTML report path |
+| `--agent` | Write the agent repair artifact (default: `_build/test_lens/agent.json`) |
+| `--agent-file PATH` | Override the agent artifact path |
 | `--no-color` | Disable ANSI color (the only color we emit is the banner) |
 | `--color` | Force-enable color (default) |
-| `--impact` | **Reserved for v0.2.0** — changed-files analysis |
-| `--rerun` | **Reserved for v0.2.0** — `--failed` helper |
 | `-j` | Alias for `--json` |
 
 Anything before `--` is TestLens; anything after is passed straight to `mix test`.
+
+## Agent repair artifact
+
+The agent artifact is a separate, machine-first JSON document that AI coding
+agents consume to triage failing Elixir tests. It carries stable failure
+identities and grouping fingerprints, app/framework/deps stacktrace splits,
+the top application frame, ranked repair targets with first-checks, hedged
+root-cause hypotheses, and exact verification commands.
+
+It is opt-in (`--agent`) and is intentionally separate from the TTY and HTML
+reports. Human-facing surfaces stay clean; the agent artifact lives at
+`_build/test_lens/agent.json`. See `docs/agent-artifact.md` for the full
+schema and worked example.
 
 ## Contributing
 
@@ -342,8 +354,9 @@ with `--formatter TestLens.Formatter` added. `TestLens.Formatter` is a plain
 Agent, and at `suite_finished` it renders the output via
 `TestLens.TerminalReporter`. Failure classification runs through
 `TestLens.Classifier`, which consults a small registry of failure adapters
-under `lib/test_lens/failure_adapters/`. The `--json` flag switches the
-reporter to a hand-rolled JSON encoder (no external dep).
+under `lib/test_lens/failure_adapters/`. The `--json` and `--html` flags
+write canonical artifacts via `TestLens.JSONReport` and `TestLens.HTMLReport`,
+both pure builders with no external dependencies.
 
 ## License
 

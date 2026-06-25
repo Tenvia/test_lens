@@ -4,24 +4,24 @@ defmodule TestLens.Config do
   defstruct format: :tty,
             output: :stdout,
             color: true,
-            impact: false,
-            rerun: false,
             json: false,
             json_file: nil,
             html: false,
             html_file: nil,
+            agent: false,
+            agent_file: nil,
             extras: []
 
   @type t :: %__MODULE__{
           format: :tty | :json | :html,
           output: :stdout | Path.t(),
           color: boolean(),
-          impact: boolean(),
-          rerun: boolean(),
           json: boolean(),
           json_file: Path.t() | nil,
           html: boolean(),
           html_file: Path.t() | nil,
+          agent: boolean(),
+          agent_file: Path.t() | nil,
           extras: keyword()
         }
 
@@ -41,6 +41,8 @@ defmodule TestLens.Config do
       |> apply_json_file_opt(opts)
       |> apply_html_opt(opts)
       |> apply_html_file_opt(opts)
+      |> apply_agent_opt(opts)
+      |> apply_agent_file_opt(opts)
       |> normalize()
     end
   end
@@ -74,6 +76,21 @@ defmodule TestLens.Config do
     case Keyword.get(opts, :html_file) do
       nil -> config
       path -> %{config | html_file: path}
+    end
+  end
+
+  defp apply_agent_opt(config, opts) do
+    if Keyword.get(opts, :agent, false) do
+      %{config | agent: true}
+    else
+      config
+    end
+  end
+
+  defp apply_agent_file_opt(config, opts) do
+    case Keyword.get(opts, :agent_file) do
+      nil -> config
+      path -> %{config | agent_file: path}
     end
   end
 

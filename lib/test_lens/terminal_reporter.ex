@@ -3,6 +3,8 @@ defmodule TestLens.TerminalReporter do
   import ExUnit.Formatter, only: [format_test_failure: 5]
   import IO.ANSI
 
+  alias TestLens.JSONReport
+
   # Faint/dim ANSI sequence (faint isn't exported by every IO.ANSI build).
   @dim "\e[2m"
   @reset reset()
@@ -417,113 +419,11 @@ defmodule TestLens.TerminalReporter do
   @spec render_json(TestLens.Config.t(), [TestLens.Result.t()], map(), integer() | :random | nil) ::
           IO.iodata()
   def render_json(%TestLens.Config{} = _config, results, times_us, seed \\ nil) do
-    passed = Enum.count(results, &TestLens.Result.passed?/1)
-    failed = Enum.count(results, &TestLens.Result.failed?/1)
-    skipped = Enum.count(results, &TestLens.Result.skipped?/1)
-    excluded = Enum.count(results, fn r -> r.status == :excluded end)
-    invalid = Enum.count(results, fn r -> r.status == :invalid end)
-    total = length(results)
-
-    failure_entries =
-      results
-      |> Enum.filter(&TestLens.Result.failed?/1)
-      |> Enum.map(&failure_to_json/1)
-
-    slow =
-      results
-      |> Enum.filter(fn r -> r.time_us > 0 end)
-      |> Enum.sort_by(& &1.time_us, :desc)
-      |> Enum.take(5)
-      |> Enum.map(fn r ->
-        %{
-          "name" => Atom.to_string(r.name),
-          "module" => inspect(r.module),
-          "file" => r.file,
-          "time_us" => r.time_us
-        }
-      end)
-
-    next_commands =
-      build_next_commands_json(seed, failed > 0)
-
-    seed_value =
-      cond do
-        is_integer(seed) -> seed
-        seed == :random -> "random"
-        true -> nil
-      end
-
-    json_map = %{
-      "test_lens_version" => TestLens.version(),
-      "summary" => %{
-        "passed" => passed,
-        "failed" => failed,
-        "skipped" => skipped,
-        "excluded" => excluded,
-        "invalid" => invalid,
-        "total" => total,
-        "times_us" => times_us
-      },
-      "failures" => failure_entries,
-      "slow" => slow,
-      "next_commands" => next_commands,
-      "seed" => seed_value
-    }
-
-    [encode_json(json_map)]
-  end
-
-  defp build_next_commands_json(_seed, _has_failures = false) do
-    [%{"command" => "mix test.lens -- --stale", "comment" => "check for stale tests"}]
-  end
-
-  defp build_next_commands_json(_seed, _has_failures = true) do
-    [
-      %{"command" => "mix test.lens -- --stale", "comment" => "check for stale tests"},
-      %{"command" => "mix test.lens -- --failed", "comment" => "rerun the failing tests"}
-    ]
-  end
-
-  defp failure_to_json(%TestLens.Result{} = f) do
-    {severity, kind} = failure_severity_and_kind(f)
-
-    layer = TestLens.Classifier.category_label(TestLens.Classifier.classify(f.test))
-
-    # Surface the real Impact classification (area, impact, user_facing,
-    # critical, reason) from the consumer's .test_lens.exs. The previous
-    # implementation hardcoded "impact" => "unknown" which made the JSON
-    # output useless for downstream tooling that wants to sort failures
-    # by impact or filter on critical. Mirrors the human-output branch
-    # (which was wired in the previous fix) and the failure_entry/1
-    # contract in TestLens.JSONReport.
-    impact =
-      f
-      |> TestLens.Impact.classify()
-      |> Map.from_struct()
-      |> stringify_keys()
-
-    %{
-      "severity" => Atom.to_string(severity),
-      "kind" => Atom.to_string(kind),
-      "layer" => layer,
-      "impact" => impact,
-      "module" => inspect(f.module),
-      "name" => Atom.to_string(f.name),
-      "file" => f.file
-    }
-  end
-
-  defp failure_severity_and_kind(%TestLens.Result{status: :invalid}) do
-    {:critical, :invalid}
-  end
-
-  defp failure_severity_and_kind(%TestLens.Result{failures: [{kind, _, _} | _]}) do
-    severity = if kind in [:exit, :throw], do: :critical, else: :other
-    {severity, kind}
-  end
-
-  defp failure_severity_and_kind(%TestLens.Result{}) do
-    {:other, :unknown}
+    # Canonical JSON shape lives in TestLens.JSONReport. This function is
+    # the TTY/stdout mirror of the on-disk artifact, so we delegate to the
+    # same builder to keep the two encoders in lock-step (one source of
+    # truth for `schema_version`, totals, failures, slow, next_commands).
+    [JSONReport.encode(TestLens.JSONReport.build(results, times_us, seed))]
   end
 
   @doc """
@@ -537,26 +437,11 @@ defmodule TestLens.TerminalReporter do
   end
 
   # Convert a map with atom keys to a map with string keys, recursively.
-  # Mirrors TestLens.JSONReport.stringify_keys/1. Duplicated here rather
-  # than promoted to a shared module because the two implementations have
-  # different lifecycles and the public surface of this module is large
-  # already; consolidating is a separate refactor.
-  defp stringify_keys(map) when is_map(map) do
-    Map.new(map, fn {k, v} -> {to_string_key(k), stringify_value(v)} end)
-  end
-
-  defp stringify_keys(other), do: other
-
-  defp stringify_value(v) when is_map(v), do: stringify_keys(v)
-  defp stringify_value(v) when is_list(v), do: Enum.map(v, &stringify_value/1)
-
-  defp stringify_value(v) when is_atom(v) and not is_nil(v) and v != true and v != false,
-    do: Atom.to_string(v)
-
-  defp stringify_value(v), do: v
-
-  defp to_string_key(k) when is_atom(k), do: Atom.to_string(k)
-  defp to_string_key(k), do: k
+  # Was previously used by failure_to_json/1 here; that helper now lives in
+  # TestLens.JSONReport, which is the single source of truth for the
+  # canonical JSON shape. The encoder below remains here because
+  # TestLens.JSONReport.encode/1 routes through TerminalReporter.encode_json/1
+  # via the public encode_json_value/1 helper above.
 
   # Tiny JSON encoder covering only the shapes we emit (string keys, scalars,
   # nested maps, lists). No external dependency.

@@ -6,7 +6,7 @@ defmodule TestLens do
   flags via the `mix test.lens` task.
   """
 
-  @version "0.1.0"
+  @version "2.0.0"
 
   @spec version() :: String.t()
   def version, do: @version

@@ -64,6 +64,7 @@ defmodule TestLens.JSONReportTest do
     artifact = JSONReport.build([], %{run: 0, async: nil, load: nil}, nil)
 
     for key <- [
+          "schema_version",
           "test_lens_version",
           "project",
           "timestamp",
@@ -172,6 +173,7 @@ defmodule TestLens.JSONReportTest do
 
     expected_keys =
       MapSet.new([
+        "schema_version",
         "test_lens_version",
         "project",
         "timestamp",
@@ -185,6 +187,16 @@ defmodule TestLens.JSONReportTest do
       ])
 
     assert MapSet.new(Map.keys(artifact)) == expected_keys
+  end
+
+  test "build/3 emits schema_version == 1.0" do
+    artifact = JSONReport.build([], %{run: 0, async: nil, load: nil}, nil)
+    assert artifact["schema_version"] == "1.0"
+  end
+
+  test "schema_version/0 returns the same string emitted in artifacts" do
+    artifact = JSONReport.build([], %{run: 0, async: nil, load: nil}, nil)
+    assert artifact["schema_version"] == JSONReport.schema_version()
   end
 
   test "build/3 classification_counts is a histogram of failure types" do
@@ -229,7 +241,8 @@ defmodule TestLens.JSONReportTest do
     assert String.starts_with?(content, "{")
     assert String.ends_with?(content, "}")
     assert content =~ "\"test_lens_version\""
-    assert content =~ "\"0.1.0\""
+    assert content =~ "\"#{TestLens.version()}\""
+    assert content =~ "\"schema_version\":\"1.0\""
     assert content =~ "\"totals\""
   end
 

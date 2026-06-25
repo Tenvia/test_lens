@@ -22,7 +22,15 @@ defmodule TestLens.Formatter do
   """
   use GenServer
 
-  alias TestLens.{Config, EventStore, HTMLReport, JSONReport, Result, TerminalReporter}
+  alias TestLens.{
+    AgentReport,
+    Config,
+    EventStore,
+    HTMLReport,
+    JSONReport,
+    Result,
+    TerminalReporter
+  }
 
   # ExUnit passes the ExUnit config keyword list to init/1.
   @impl GenServer
@@ -151,6 +159,19 @@ defmodule TestLens.Formatter do
       if state.config.html_file || state.config.format == :html do
         path = state.config.html_file || HTMLReport.default_path()
         _ = HTMLReport.write(path, results, times_us, state.seed)
+      end
+
+      # Agent repair artifact (2.0+): opt-in via --agent or --agent-file.
+      # The artifact is intentionally separate from human-facing reports.
+      # When written, append a single footer line to the TTY output so the
+      # human running the suite sees where to find it.
+      if state.config.agent || state.config.agent_file do
+        path = state.config.agent_file || AgentReport.default_path()
+
+        case AgentReport.write(path, results, times_us, state.seed) do
+          :ok -> IO.write(["Agent artifact: ", path, "\n"])
+          {:error, reason} -> IO.write(["Agent artifact failed: ", inspect(reason), "\n"])
+        end
       end
 
       {:noreply, %{state | times_us: times_us, rendered: true}}
