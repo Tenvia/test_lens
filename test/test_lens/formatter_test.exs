@@ -70,7 +70,14 @@ defmodule TestLens.FormatterTest do
       # writes never leak into the default store (and therefore into
       # the final `mix test.lens` report).
       event_store: Keyword.get(opts, :event_store, EventStore),
-      rendered: Keyword.get(opts, :rendered, false)
+      rendered: Keyword.get(opts, :rendered, false),
+      # v3.0+ OTP snapshot plumbing. Tests that don't care should
+      # leave these at their defaults (no bridge, empty snapshots).
+      bridge: Keyword.get(opts, :bridge, nil),
+      snapshots: Keyword.get(opts, :snapshots, %{}),
+      bridge_events: Keyword.get(opts, :bridge_events, []),
+      # v4.0+ advisor plumbing.
+      lib_root: Keyword.get(opts, :lib_root, nil)
     }
   end
 
@@ -146,6 +153,15 @@ defmodule TestLens.FormatterTest do
   test "handle_cast :module_started records the TestModule in the formatter state" do
     tm = build_test_module(name: :"MyApp.Foo.Test", file: "test/foo_test.exs")
     s0 = state()
+
+    # Ensure the default-named EventStore is running. Other tests in this
+    # file use the isolated store; this one relies on the live one because
+    # it exercises the handle_cast path that the production formatter
+    # uses when no override is present.
+    case EventStore.start_link() do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+    end
 
     assert {:noreply, s1} = Formatter.handle_cast({:module_started, tm}, s0)
     assert s1.current_module == tm
@@ -235,7 +251,8 @@ defmodule TestLens.FormatterTest do
       end)
 
     assert output =~ ~s("test_lens_version")
-    assert output =~ ~s("0.1.0")
+    assert output =~ ~s("#{TestLens.version()}")
+    assert output =~ ~s("schema_version")
   end
 
   test "handle_cast :suite_finished in :json format writes the JSON artifact", %{store: s} do
@@ -257,7 +274,8 @@ defmodule TestLens.FormatterTest do
     assert File.exists?(path)
     {:ok, content} = File.read(path)
     assert content =~ "\"test_lens_version\""
-    assert content =~ "\"0.1.0\""
+    assert content =~ "\"#{TestLens.version()}\""
+    assert content =~ "\"schema_version\""
   end
 
   test "handle_cast :suite_finished writes the HTML artifact when config.html_file is set", %{

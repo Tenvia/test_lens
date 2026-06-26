@@ -4,7 +4,7 @@ defmodule TestLens.MixProject do
   def project do
     [
       app: :test_lens,
-      version: "0.1.0",
+      version: "2.0.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -28,7 +28,8 @@ defmodule TestLens.MixProject do
 
   defp deps do
     [
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:telemetry, "~> 1.0", optional: true, runtime: false}
     ]
   end
 

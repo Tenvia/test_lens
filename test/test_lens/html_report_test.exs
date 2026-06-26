@@ -172,7 +172,7 @@ defmodule TestLens.HTMLReportTest do
 
   test "build/3 includes the TestLens version" do
     html = HTMLReport.build([], %{run: 0, async: nil, load: nil}, nil)
-    assert html =~ "TestLens 0.1.0"
+    assert html =~ "TestLens #{TestLens.version()}"
   end
 
   test "build/3 has inline CSS (not a stylesheet link)" do

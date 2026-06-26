@@ -6,7 +6,7 @@ defmodule TestLens.TerminalReporterTest do
   # {:error, :enoent} while another test file is being required on CI.
   use ExUnit.Case, async: false
 
-  alias TestLens.{Config, Result, TerminalReporter}
+  alias TestLens.{Config, JSONReport, Result, TerminalReporter}
 
   defp config, do: Config.defaults()
 
@@ -301,14 +301,15 @@ defmodule TestLens.TerminalReporterTest do
     assert bin =~ "seed: 42"
   end
 
-  test "render_json/4 with empty results returns JSON with test_lens_version" do
+  test "render_json/4 with empty results returns JSON with schema_version and test_lens_version" do
     iodata = TerminalReporter.render_json(config(), [], %{run: 0, async: nil, load: nil}, nil)
     bin = IO.iodata_to_binary(iodata)
+    assert bin =~ "\"schema_version\":\"1.0\""
     assert bin =~ "test_lens_version"
-    assert bin =~ "0.1.0"
+    assert bin =~ TestLens.version()
   end
 
-  test "render_json/4 with empty results returns JSON with summary containing passed, failed, skipped, excluded, invalid, total" do
+  test "render_json/4 with empty results returns JSON totals containing passed, failed, skipped, excluded, invalid, tests" do
     iodata = TerminalReporter.render_json(config(), [], %{run: 0, async: nil, load: nil}, nil)
     bin = IO.iodata_to_binary(iodata)
     assert bin =~ "\"passed\":0"
@@ -316,7 +317,7 @@ defmodule TestLens.TerminalReporterTest do
     assert bin =~ "\"skipped\":0"
     assert bin =~ "\"excluded\":0"
     assert bin =~ "\"invalid\":0"
-    assert bin =~ "\"total\":0"
+    assert bin =~ "\"tests\":0"
   end
 
   test "render_json/4 with empty results returns JSON with times_us" do
@@ -347,6 +348,27 @@ defmodule TestLens.TerminalReporterTest do
     iodata = TerminalReporter.render_json(config(), [], %{run: 0, async: nil, load: nil}, nil)
     bin = IO.iodata_to_binary(iodata)
     assert bin =~ "seed"
+  end
+
+  test "render_json/4 delegates to TestLens.JSONReport (single source of truth)" do
+    results = [error_result()]
+    times_us = %{run: 1000, async: nil, load: nil}
+    seed = 42
+
+    via_terminal =
+      IO.iodata_to_binary(TerminalReporter.render_json(config(), results, times_us, seed))
+
+    via_report = JSONReport.encode(JSONReport.build(results, times_us, seed))
+
+    left = Jason.decode!(via_terminal)
+    right = Jason.decode!(via_report)
+
+    # `timestamp` is generated at build time, so it differs between the two
+    # calls. Strip it before comparing structural equivalence.
+    left_no_ts = Map.delete(left, "timestamp")
+    right_no_ts = Map.delete(right, "timestamp")
+
+    assert left_no_ts == right_no_ts
   end
 
   # ---------------------------------------------------------------------------

@@ -58,4 +58,31 @@ defmodule Mix.Tasks.Test.LensTest do
     assert Task.parse(["--html-file", "tmp/test_lens/report.html"]) ==
              {[html_file: "tmp/test_lens/report.html"], [], []}
   end
+
+  test "--agent is captured" do
+    assert Task.parse(["--agent"]) == {[agent: true], [], []}
+  end
+
+  test "--agent-file PATH is captured" do
+    assert Task.parse(["--agent-file", "tmp/test_lens/agent.json"]) ==
+             {[agent_file: "tmp/test_lens/agent.json"], [], []}
+  end
+
+  test "--agent combined with --json works" do
+    assert Task.parse(["--agent", "--json", "--", "--failed"]) ==
+             {[agent: true, json: true], ["--failed"], []}
+  end
+
+  test "--advise is captured" do
+    assert Task.parse(["--advise"]) == {[advise: true], [], []}
+  end
+
+  test "--advise-file PATH is captured" do
+    assert Task.parse(["--advise-file", "tmp/test_lens/advice.json"]) ==
+             {[advise_file: "tmp/test_lens/advice.json"], [], []}
+  end
+
+  test "--snapshot is captured" do
+    assert Task.parse(["--snapshot"]) == {[snapshot: true], [], []}
+  end
 end

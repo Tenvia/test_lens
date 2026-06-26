@@ -41,8 +41,10 @@ defmodule TestLens.HTMLReport do
 
   ## Stability
 
-  Section order and section IDs are part of the v0.1.0 contract. Section
+  Section order and section IDs are part of the 1.0.0 contract. Section
   contents may gain fields in minor versions; section structure is stable.
+  The underlying JSON artifact carries a `schema_version` field; the HTML
+  renders the same TestLens version string in `<meta name="generator">`.
   """
 
   alias TestLens.{Classifier, Impact, ProjectConfig, Result}

@@ -4,24 +4,34 @@ defmodule TestLens.Config do
   defstruct format: :tty,
             output: :stdout,
             color: true,
-            impact: false,
-            rerun: false,
             json: false,
             json_file: nil,
             html: false,
             html_file: nil,
+            agent: false,
+            agent_file: nil,
+            snapshot: false,
+            snapshot_dir: nil,
+            advise: false,
+            advise_file: nil,
+            dashboard_port: nil,
             extras: []
 
   @type t :: %__MODULE__{
           format: :tty | :json | :html,
           output: :stdout | Path.t(),
           color: boolean(),
-          impact: boolean(),
-          rerun: boolean(),
           json: boolean(),
           json_file: Path.t() | nil,
           html: boolean(),
           html_file: Path.t() | nil,
+          agent: boolean(),
+          agent_file: Path.t() | nil,
+          snapshot: boolean(),
+          snapshot_dir: Path.t() | nil,
+          advise: boolean(),
+          advise_file: Path.t() | nil,
+          dashboard_port: non_neg_integer() | nil,
           extras: keyword()
         }
 
@@ -41,6 +51,13 @@ defmodule TestLens.Config do
       |> apply_json_file_opt(opts)
       |> apply_html_opt(opts)
       |> apply_html_file_opt(opts)
+      |> apply_agent_opt(opts)
+      |> apply_agent_file_opt(opts)
+      |> apply_snapshot_opt(opts)
+      |> apply_snapshot_dir_opt(opts)
+      |> apply_advise_opt(opts)
+      |> apply_advise_file_opt(opts)
+      |> apply_dashboard_port_opt(opts)
       |> normalize()
     end
   end
@@ -74,6 +91,59 @@ defmodule TestLens.Config do
     case Keyword.get(opts, :html_file) do
       nil -> config
       path -> %{config | html_file: path}
+    end
+  end
+
+  defp apply_agent_opt(config, opts) do
+    if Keyword.get(opts, :agent, false) do
+      %{config | agent: true}
+    else
+      config
+    end
+  end
+
+  defp apply_agent_file_opt(config, opts) do
+    case Keyword.get(opts, :agent_file) do
+      nil -> config
+      path -> %{config | agent_file: path}
+    end
+  end
+
+  defp apply_snapshot_opt(config, opts) do
+    if Keyword.get(opts, :snapshot, false) do
+      %{config | snapshot: true}
+    else
+      config
+    end
+  end
+
+  defp apply_snapshot_dir_opt(config, opts) do
+    case Keyword.get(opts, :snapshot_dir) do
+      nil -> config
+      path -> %{config | snapshot_dir: path}
+    end
+  end
+
+  defp apply_advise_opt(config, opts) do
+    if Keyword.get(opts, :advise, false) do
+      %{config | advise: true}
+    else
+      config
+    end
+  end
+
+  defp apply_advise_file_opt(config, opts) do
+    case Keyword.get(opts, :advise_file) do
+      nil -> config
+      path -> %{config | advise_file: path}
+    end
+  end
+
+  defp apply_dashboard_port_opt(config, opts) do
+    case Keyword.get(opts, :dashboard_port) do
+      nil -> config
+      port when is_integer(port) and port > 0 -> %{config | dashboard_port: port}
+      _ -> config
     end
   end
 

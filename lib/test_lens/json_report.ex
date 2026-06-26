@@ -17,10 +17,13 @@ defmodule TestLens.JSONReport do
   ## Schema (v0.1.0)
 
   The artifact is a single JSON object with the following top-level keys.
-  Field names are stable; new fields may be added in minor versions.
+  Field names are stable across a given `schema_version`. New fields may be
+  added in minor versions of TestLens within the same `schema_version`.
+  Consumers should branch on `schema_version` and ignore unknown fields.
 
       %{
-        "test_lens_version" => "0.1.0",
+        "schema_version"    => "1.0",
+        "test_lens_version" => "1.0.0",
         "project"           => "ExampleApp" | null,   # from .test_lens.exs :project
         "timestamp"         => "2026-06-24T10:00:00.000000Z",  # ISO 8601 UTC
         "seed"              => 12345 | :random | nil,         # ExUnit seed
@@ -85,9 +88,10 @@ defmodule TestLens.JSONReport do
 
   ## Stability
 
-  This schema is part of the public v0.1.0 contract. Field names will not
-  change without a major version bump. New fields may be added in minor
-  versions. Consumers should ignore unknown fields.
+  This schema is part of the public 1.0.0 contract. Field names will not
+  change within a given `schema_version`. New fields may be added in minor
+  versions of TestLens within the same `schema_version`. Consumers should
+  branch on `schema_version` and ignore unknown fields.
 
   ## What is NOT included
 
@@ -106,6 +110,12 @@ defmodule TestLens.JSONReport do
 
   @default_path "_build/test_lens/report.json"
 
+  @schema_version "1.0"
+
+  @doc "Returns the JSON `schema_version` string emitted by this build."
+  @spec schema_version() :: String.t()
+  def schema_version, do: @schema_version
+
   @doc "Returns the default artifact path."
   @spec default_path() :: String.t()
   def default_path, do: @default_path
@@ -120,6 +130,7 @@ defmodule TestLens.JSONReport do
     failed = Enum.filter(results, &Result.failed?/1)
 
     %{
+      "schema_version" => @schema_version,
       "test_lens_version" => TestLens.version(),
       "project" => ProjectConfig.load_or_default().project,
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
