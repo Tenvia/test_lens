@@ -23,12 +23,14 @@ defmodule TestLens.Formatter do
   use GenServer
 
   alias TestLens.{
+    Advice,
     AgentReport,
     Config,
     EventStore,
     HTMLReport,
     JSONReport,
     OTPSnapshot,
+    OTPTopology,
     Result,
     TelemetryBridge,
     TerminalReporter
@@ -91,7 +93,11 @@ defmodule TestLens.Formatter do
        # so the agent artifact builder can attach them.
        bridge: nil,
        snapshots: %{},
-       bridge_events: []
+       bridge_events: [],
+       # Architecture advisor support (4.0+): when `--advise` is enabled,
+       # the advisor runs on `:suite_finished` using `lib_root` (the
+       # consumer's `lib/` directory, if available).
+       lib_root: detect_lib_root()
      }}
   end
 
@@ -279,6 +285,7 @@ defmodule TestLens.Formatter do
     |> maybe_write_html(results, times_us)
     |> maybe_write_agent(results, times_us)
     |> maybe_write_snapshot_dir()
+    |> maybe_write_advice()
   end
 
   defp write_tty(state, results, times_us) do
@@ -308,7 +315,18 @@ defmodule TestLens.Formatter do
     if state.config.agent || state.config.agent_file do
       path = state.config.agent_file || AgentReport.default_path()
 
-      case AgentReport.write(path, results, times_us, state.seed, state.snapshots) do
+      # If --advise is also enabled, the advisor findings are
+      # embedded in the agent artifact under `architecture_findings[]`.
+      # This avoids making agents follow two files for the same data.
+      findings =
+        if state.config.advise || state.config.advise_file do
+          topology = OTPTopology.build(state.lib_root)
+          TestLens.Architecture.run(topology, state.lib_root)
+        else
+          []
+        end
+
+      case AgentReport.write(path, results, times_us, state.seed, state.snapshots, findings) do
         :ok -> IO.write(["Agent artifact: ", path, "\n"])
         {:error, reason} -> IO.write(["Agent artifact failed: ", inspect(reason), "\n"])
       end
@@ -327,5 +345,43 @@ defmodule TestLens.Formatter do
 
   defp maybe_stop_bridge(state) do
     if state.bridge, do: stop_bridge(state), else: state
+  end
+
+  defp maybe_write_advice(state) do
+    if state.config.advise || state.config.advise_file do
+      path = state.config.advise_file || Advice.default_path()
+      topology = OTPTopology.build(state.lib_root)
+      _ = Advice.write(path, topology, state.lib_root)
+      IO.write(["Advice artifact: ", path, "\n"])
+    end
+
+    state
+  end
+
+  # Detect the consumer project's `lib/` directory by walking up from
+  # the formatter's cwd looking for a `lib/` subdirectory that contains
+  # at least one `.ex` file. Returns `nil` if not found.
+  defp detect_lib_root do
+    cwd = File.cwd!()
+
+    Enum.find_value(1..5, fn _ ->
+      candidate = Path.join(cwd, "lib")
+
+      if File.dir?(candidate) and has_elixir?(candidate) do
+        candidate
+      else
+        nil
+      end
+    end)
+  end
+
+  defp has_elixir?(dir) do
+    case File.ls(dir) do
+      {:ok, entries} when is_list(entries) ->
+        Enum.any?(entries, &String.ends_with?(&1, ".ex"))
+
+      _ ->
+        false
+    end
   end
 end

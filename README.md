@@ -2,7 +2,9 @@
 
 > Better ExUnit output and tooling for Elixir, Phoenix, and OTP codebases.
 > Drop-in formatter, stable JSON artifact, self-contained HTML report,
-> and a separate agent repair artifact for AI coding assistants.
+> a separate agent repair artifact for AI coding assistants, OTP
+> runtime snapshots for failed tests, an architecture advisor, and a
+> local dashboard.
 
 ## What TestLens is
 
@@ -321,11 +323,27 @@ not display formats.
 | `--agent-file PATH` | Override the agent artifact path |
 | `--snapshot` | Capture OTP runtime snapshots at failure time into the agent artifact |
 | `--snapshot-dir PATH` | Also write per-failure snapshot NDJSON files to PATH |
+| `--advise` | Write the architecture advisor artifact (default: `_build/test_lens/advice.json`) |
+| `--advise-file PATH` | Override the advisor artifact path |
 | `--no-color` | Disable ANSI color (the only color we emit is the banner) |
 | `--color` | Force-enable color (default) |
 | `-j` | Alias for `--json` |
 
 Anything before `--` is TestLens; anything after is passed straight to `mix test`.
+
+## Local dashboard
+
+```sh
+mix lens.serve                       # port 4000, serves _build/test_lens
+mix lens.serve --port 4100           # override port
+```
+
+Opens <http://localhost:4000>. The dashboard is a single-file static
+SPA (no framework, no external assets) served by `:inets`. It renders
+`agent.json` and `advice.json` with tabs for Summary / Failures / Repair
+Queue / OTP Snapshots / Architecture Findings.
+
+Dev-only: `mix lens.serve` refuses to run outside `Mix.env() == :dev`.
 
 ## Agent repair artifact
 
@@ -354,6 +372,21 @@ useful for streaming consumers that want one file per failure.
 
 The TTY and HTML reports are unchanged. See `docs/otp-snapshots.md` for the
 full schema, safety guarantees, and worked example.
+
+## Architecture advisor
+
+When `--advise` is enabled, TestLens walks the OTP topology and the
+project's `lib/` directory and writes a separate `advice.json`
+artifact with stable findings. Six built-in rules ship in v4.0:
+`cross_tree_call`, `unbounded_mailbox`, `raw_process_spawn`,
+`registry_naming`, `supervisor_no_children`, plus the reserved
+`mismatched_restart_strategy` stub. Findings carry severity, confidence,
+location, evidence, explanation, remediation, and related modules.
+
+When `--advise` is combined with `--agent`, the same findings are also
+embedded in the agent artifact under `architecture_findings[]`. The
+finding `id` joins both artifacts. See `docs/architecture-advisor.md`
+for the full rule catalog and schema.
 
 ## Contributing
 

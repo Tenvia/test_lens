@@ -62,13 +62,13 @@ defmodule TestLens.AgentReportTest do
   end
 
   describe "schema" do
-    test "schema_version/0 returns 3.0" do
-      assert AgentReport.schema_version() == "3.0"
+    test "schema_version/0 returns 4.0" do
+      assert AgentReport.schema_version() == "4.0"
     end
 
-    test "build/3 emits schema_version == 3.0 at the top level" do
+    test "build/3 emits schema_version == 4.0 at the top level" do
       artifact = AgentReport.build([], %{run: 0, async: nil, load: nil}, nil)
-      assert artifact["schema_version"] == "3.0"
+      assert artifact["schema_version"] == "4.0"
     end
 
     test "build/3 with empty results has the canonical top-level keys" do
@@ -84,6 +84,7 @@ defmodule TestLens.AgentReportTest do
             "repair_queue",
             "commands",
             "otp_snapshots",
+            "architecture_findings",
             "safety"
           ] do
         assert Map.has_key?(artifact, key), "missing key: #{key}"
@@ -382,11 +383,11 @@ defmodule TestLens.AgentReportTest do
       assert File.exists?(path)
     end
 
-    test "writes valid JSON containing schema_version 3.0", %{dir: dir} do
+    test "writes valid JSON containing schema_version 4.0", %{dir: dir} do
       path = Path.join(dir, "agent.json")
       :ok = AgentReport.write(path, [failed_result()], %{run: 0, async: nil, load: nil}, 7)
       {:ok, content} = File.read(path)
-      assert content =~ "\"schema_version\":\"3.0\""
+      assert content =~ "\"schema_version\":\"4.0\""
       assert content =~ "\"test_lens_version\":\"2.0.0\""
     end
   end

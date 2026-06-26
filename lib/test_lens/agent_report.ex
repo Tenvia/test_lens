@@ -46,10 +46,19 @@ defmodule TestLens.AgentReport do
       }
   """
 
-  alias TestLens.{Classifier, Fingerprint, Impact, JSONReport, ProjectConfig, Result, Stacktrace}
+  alias TestLens.{
+    Architecture,
+    Classifier,
+    Fingerprint,
+    Impact,
+    JSONReport,
+    ProjectConfig,
+    Result,
+    Stacktrace
+  }
 
   @default_path "_build/test_lens/agent.json"
-  @schema_version "3.0"
+  @schema_version "4.0"
 
   @doc "Returns the default artifact path."
   @spec default_path() :: String.t()
@@ -77,10 +86,24 @@ defmodule TestLens.AgentReport do
   """
   @spec build([Result.t()], map(), integer() | :random | nil, map() | nil) :: map()
   def build(results, times_us, seed, otp_snapshots) do
+    build(results, times_us, seed, otp_snapshots, nil)
+  end
+
+  @doc """
+  Build with optional architecture findings (4.0+).
+
+  `architecture_findings` is a list of `%TestLens.Architecture.Finding{}`
+  records. When non-nil and non-empty, it appears under
+  `architecture_findings[]` at the top level and `failures[i].architecture_findings`
+  carries the relevant finding IDs.
+  """
+  @spec build([Result.t()], map(), integer() | :random | nil, map() | nil, list() | nil) :: map()
+  def build(results, times_us, seed, otp_snapshots, architecture_findings) do
     failed = Enum.filter(results, &Result.failed?/1)
     failures = Enum.map(failed, &failure_entry/1)
     fingerprint_groups = group_by_fingerprint(failures)
     snapshots = otp_snapshots || %{}
+    findings = architecture_findings || []
 
     %{
       "schema_version" => @schema_version,
@@ -92,6 +115,7 @@ defmodule TestLens.AgentReport do
       "repair_queue" => repair_queue(fingerprint_groups, failures),
       "commands" => commands(seed, failed != []),
       "otp_snapshots" => otp_snapshots_list(snapshots),
+      "architecture_findings" => Enum.map(findings, &Architecture.Finding.to_map/1),
       "safety" => safety_block()
     }
   end
@@ -130,16 +154,23 @@ defmodule TestLens.AgentReport do
   @spec write(Path.t(), [Result.t()], map(), integer() | :random | nil) ::
           :ok | {:error, term()}
   def write(path, results, times_us, seed) do
-    write(path, results, times_us, seed, nil)
+    write(path, results, times_us, seed, nil, nil)
   end
 
-  @doc """
-  Build and write the agent artifact with optional OTP snapshots (3.0+).
-  """
   @spec write(Path.t(), [Result.t()], map(), integer() | :random | nil, map() | nil) ::
           :ok | {:error, term()}
   def write(path, results, times_us, seed, otp_snapshots) do
-    payload = encode(build(results, times_us, seed, otp_snapshots))
+    write(path, results, times_us, seed, otp_snapshots, nil)
+  end
+
+  @doc """
+  Build and write the agent artifact with optional OTP snapshots (3.0+)
+  and optional architecture findings (4.0+).
+  """
+  @spec write(Path.t(), [Result.t()], map(), integer() | :random | nil, map() | nil, list() | nil) ::
+          :ok | {:error, term()}
+  def write(path, results, times_us, seed, otp_snapshots, architecture_findings) do
+    payload = encode(build(results, times_us, seed, otp_snapshots, architecture_findings))
 
     try do
       path |> Path.dirname() |> File.mkdir_p!()

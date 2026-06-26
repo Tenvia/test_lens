@@ -15,6 +15,8 @@ defmodule Mix.Tasks.Test.Lens do
       mix test.lens --agent-file PATH     # override the agent artifact path
       mix test.lens --snapshot            # capture OTP snapshots at failure time
       mix test.lens --snapshot-dir PATH   # directory for per-test snapshot NDJSON
+      mix test.lens --advise              # write architecture advisor artifact
+      mix test.lens --advise-file PATH    # override the advisor artifact path
 
   ## Agent repair artifact (2.0+)
 
@@ -31,6 +33,13 @@ defmodule Mix.Tasks.Test.Lens do
   (supervision tree, mailbox depth, link/monitor graph, telemetry
   rollups, GenServer state hashes) at the moment a test fails. Snapshot
   data lives in the agent artifact; TTY and HTML reports are unchanged.
+
+  ## Architecture advisor (4.0+)
+
+  `mix test.lens --advise` writes `_build/test_lens/advice.json`, a
+  separate artifact that captures static AST + supervisor topology
+  findings (cross-tree calls, raw process spawns, registry naming
+  issues, etc.). The advisor runs even when no test fails.
   """
 
   @switches [
@@ -42,6 +51,8 @@ defmodule Mix.Tasks.Test.Lens do
     agent_file: :string,
     snapshot: :boolean,
     snapshot_dir: :string,
+    advise: :boolean,
+    advise_file: :string,
     color: :boolean,
     no_color: :boolean
   ]
@@ -57,21 +68,8 @@ defmodule Mix.Tasks.Test.Lens do
 
     config = TestLens.Config.from_option_parser(parsed)
 
-    # ExUnit 1.19's --formatter flag does not forward key:value options to
-    # formatter init/1, so we publish the TestLens config via the application
-    # environment. The formatter reads it on init.
     Application.put_env(:test_lens, :config, config)
 
-    # Load the consumer's ProjectConfig (.test_lens.exs) HERE, in the
-    # cwd where the mix task is invoked, and publish it to the
-    # application environment. Use load_or_walk/1 (not load_or_default/1)
-    # so the search walks up the directory tree — necessary for
-    # umbrella projects where the mix task is invoked from the umbrella
-    # root but the umbrella changes cwd to the app dir (e.g.
-    # apps/saastle/) before running tests. Without the walk, the
-    # default read would happen from the test-process cwd (apps/saastle/)
-    # where .test_lens.exs is not, and every failure would surface
-    # default_impact.
     project_config = TestLens.ProjectConfig.load_or_walk()
     Application.put_env(:test_lens, :project_config, project_config)
 
@@ -93,14 +91,12 @@ defmodule Mix.Tasks.Test.Lens do
     {opts, rest, invalid} =
       OptionParser.parse(args, strict: @switches, aliases: @aliases, return_separator: true)
 
-    # Transform color: false back to no_color: true to match expected API
     opts =
       case opts do
         [color: false] -> [no_color: true]
         other -> other
       end
 
-    # Transform invalid options from {string, value} to {atom, :invalid_option}
     invalid =
       Enum.map(invalid, fn {key, _value} ->
         atom_key = key |> String.trim_leading("--") |> String.to_atom()

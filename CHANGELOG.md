@@ -5,6 +5,56 @@ All notable changes to TestLens will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-06-25
+
+### Added
+
+- **Architecture advisor** — opt-in (`mix test.lens --advise`) capture of
+  static AST + supervisor topology findings. Ships with 6 built-in rules:
+  `cross_tree_call`, `unbounded_mailbox`, `mismatched_restart_strategy`
+  (stub for v4.1), `raw_process_spawn`, `registry_naming`,
+  `supervisor_no_children`. Each finding has a stable SHA-256 id,
+  severity, confidence (heuristic, never claim certainty), location,
+  evidence, explanation, remediation, and related modules.
+- New module `TestLens.OTPTopology` — resolves running applications,
+  top-level supervisors, and `lib/`-rooted AST scan for
+  `GenServer.call`, `GenServer.cast`, `Registry.lookup`,
+  `Phoenix.PubSub.broadcast` call edges.
+- New module `TestLens.Architecture` — runs the rule engine and
+  isolates rule failures as `:rule_error` findings so a single broken
+  rule does not break the whole run.
+- New module `TestLens.Architecture.Finding` — value struct with
+  deterministic id and JSON-friendly `to_map/1` serializer.
+- New module `TestLens.Advice` — writes the `advice.json` artifact
+  with stable `schema_version: "4.0"`.
+- New module `TestLens.Dashboard` — generates a single-file static
+  SPA (`index.html` + `app.css` + `app.js`) that renders the TestLens
+  artifacts in the browser. No external assets, no JS framework.
+- New Mix task `Mix.Tasks.Lens.Serve` — `:inets`-based static HTTP
+  server for the dashboard. Dev-only; refuses to run outside
+  `Mix.env() == :dev`. Default port 4000, override with `--port`.
+- New CLI flags `--advise` and `--advise-file PATH`.
+- `TestLens.AgentReport` schema_version bumped to `"4.0"`. New
+  top-level `architecture_findings[]` array (empty array when
+  `--advise` was not used). Per-failure entries can carry
+  `architecture_findings: [finding_id, ...]` pointers joining to
+  `advice.json` by id.
+- New docs pages: `docs/architecture-advisor.md` (full rule catalog,
+  schema, safety guarantees, worked example) and `docs/dashboard.md`
+  (serving the SPA, dev-only guard).
+
+### Notes
+
+- The architecture advisor uses static AST analysis only. v4.0 ships
+  conservative rules: false positives are preferable to false negatives.
+  Tune confidence in `TestLens.Architecture.Rules.<Name>` if your
+  project trips a rule that does not apply.
+- `mismatched_restart_strategy` is reserved for v4.1. Elixir 1.19 does
+  not expose `:supervisor` child specs publicly; we mark this rule as
+  a stub rather than guess.
+- The dashboard server uses `:inets` (stdlib, zero deps). v4.1 will
+  swap to `:bandit` when it's stable as a default Elixir dep.
+
 ## [3.0.0] - 2026-06-25
 
 ### Added

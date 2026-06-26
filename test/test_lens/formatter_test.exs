@@ -75,7 +75,9 @@ defmodule TestLens.FormatterTest do
       # leave these at their defaults (no bridge, empty snapshots).
       bridge: Keyword.get(opts, :bridge, nil),
       snapshots: Keyword.get(opts, :snapshots, %{}),
-      bridge_events: Keyword.get(opts, :bridge_events, [])
+      bridge_events: Keyword.get(opts, :bridge_events, []),
+      # v4.0+ advisor plumbing.
+      lib_root: Keyword.get(opts, :lib_root, nil)
     }
   end
 
